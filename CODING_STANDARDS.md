@@ -5,6 +5,8 @@ How the C# in this repo is written. New code follows the code around it, and the
 ## Files and types
 
 - One type per file, named after the type. A small type that only one class uses is nested in that class.
+- At a project's root, only `Program.cs` and `GlobalUsings.cs`. Every other C# file goes in a subdirectory named for
+  what it does.
 - File-scoped namespaces that match the folder (`namespace Runner.Commands;`).
 - No `using` directives in the files: every project has a `GlobalUsings.cs`, and new namespaces go there.
 - Types are `internal sealed` unless something outside the project needs them.
