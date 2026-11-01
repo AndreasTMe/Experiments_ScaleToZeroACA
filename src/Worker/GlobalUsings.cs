@@ -1,0 +1,15 @@
+global using System;
+global using System.Diagnostics;
+global using System.Reflection;
+global using System.Runtime.InteropServices;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using Azure.Messaging.ServiceBus;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Hosting;
+global using Microsoft.Extensions.Logging;
+global using Worker.Configuration;
+global using Worker.Messaging;
+global using Worker.Startup;
