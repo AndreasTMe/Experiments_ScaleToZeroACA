@@ -74,6 +74,7 @@ internal sealed class QueueProcessor : IHostedService, IAsyncDisposable
             _options.RevisionName,
             SdkVersion,
             RuntimeInformation.FrameworkDescription,
+            args.Message.EnqueuedTime,
             _timeline.ProcessStarted,
             _timeline.MainEntered,
             _timeline.HostStarted,

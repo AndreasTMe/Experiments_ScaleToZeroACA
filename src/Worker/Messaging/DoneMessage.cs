@@ -6,6 +6,7 @@ internal sealed record DoneMessage(
     string? RevisionName,
     string SdkVersion,
     string RuntimeVersion,
+    DateTimeOffset TriggerEnqueued,
     DateTimeOffset ProcessStarted,
     DateTimeOffset MainEntered,
     DateTimeOffset HostStarted,

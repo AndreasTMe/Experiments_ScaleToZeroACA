@@ -5,8 +5,9 @@ it. Checked on 2026-11-01.
 
 ## Result
 
-The publish reports **no trim or AOT warnings**, and the binary starts and reaches "processor started" against the
-emulator with no exceptions. Sending and receiving a message as AOT hasn't been tested yet.
+The publish reports **no trim or AOT warnings**, and the binary works against the emulator with no exceptions. It
+started, received a trigger, sent its `done` message and completed the trigger. The JIT worker's `done` message parses
+into the same shape, under a parser that rejects missing and unknown fields. This hasn't run against Azure yet.
 
 | Warning code | Member | Package | Count |
 |--------------|--------|---------|-------|
@@ -34,16 +35,15 @@ a warning about unnecessary suppressions.
 | Image the binary ran on      | `mcr.microsoft.com/dotnet/runtime-deps:10.0.14-noble`                     |
 | Run image digest             | `sha256:62028293921f5bd6db3d9f9119cd29cd926dfd3c2336da23b09f425e40c3c832` |
 
-`global.json` pins the same SDK, 10.0.403, because the image tag list has no 10.0.1xx tag newer than 10.0.103. These
-builds ran before that pin moved from 10.0.114, so `global.json` was left out of the copy of the sources inside the
-build container.
+`global.json` pins the same SDK, 10.0.403, because the image tag list has no 10.0.1xx tag newer than 10.0.103. The
+current binary was built with that pin in place.
 
 ## Binary size
 
 | File         | Bytes      | Size     |
 |--------------|------------|----------|
-| `Worker`     | 9,142,488  | 8.7 MiB  |
-| `Worker.dbg` | 16,608,416 | 15.8 MiB |
+| `Worker`     | 9,150,696  | 8.7 MiB  |
+| `Worker.dbg` | 16,610,368 | 15.8 MiB |
 
 `Worker.dbg` holds the debug symbols, and is not needed to run the binary.
 
@@ -59,5 +59,5 @@ Limits of that result:
   package.
 - A library can silence its own warnings with `UnconditionalSuppressMessage`, and the compiler only analyses code that
   is reachable. So no warnings isn't proof that every path works at runtime.
-- Only startup has run. A sender link was opened and the processor started, but no message has been received, completed
-  or sent.
+- The runtime check covers one path: receive, send and complete with a connection string, on the emulator. Completion
+  is inferred, because the trigger wasn't redelivered after a restart once its one-minute lock had expired.

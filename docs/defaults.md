@@ -57,4 +57,4 @@ Rows marked docs are written up, with links and dates, in [platform-facts.md](pl
 | Managed identity supported for the scale rule      | Yes                                              | Yes; the role needed isn't documented | docs       |
 | Consumption free grant per subscription per month  | 180k vCPU-s, 360k GiB-s, 2M requests             |                                       | UNVERIFIED |
 | Idle rate for a replica with min replicas 1        | Lower than the active rate                       |                                       | UNVERIFIED |
-| `Azure.Messaging.ServiceBus` works with Native AOT | Unknown. Build with trimming and AOT warnings on | No warnings, starts; receive untested | runtime    |
+| `Azure.Messaging.ServiceBus` works with Native AOT | Unknown. Build with trimming and AOT warnings on | No warnings; emulator round trip OK   | runtime    |

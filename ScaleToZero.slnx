@@ -8,6 +8,9 @@
         <File Path="local/compose.yaml" />
         <File Path="local/emulator-config.json" />
     </Folder>
+    <Folder Name="/scripts/">
+        <Project Path="scripts/Runner/Runner.csproj" />
+    </Folder>
     <Folder Name="/src/">
         <Project Path="src/Worker/Worker.csproj" />
     </Folder>
