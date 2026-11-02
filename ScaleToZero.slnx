@@ -5,6 +5,13 @@
         <File Path="docs/images.md" />
         <File Path="docs/platform-facts.md" />
     </Folder>
+    <Folder Name="/infra/">
+        <File Path="infra/main.bicep" />
+        <File Path="infra/main.bicepparam" />
+    </Folder>
+    <Folder Name="/infra/modules/">
+        <File Path="infra/modules/base.bicep" />
+    </Folder>
     <Folder Name="/local/">
         <File Path="local/compose.yaml" />
         <File Path="local/emulator-config.json" />
