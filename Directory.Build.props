@@ -1,0 +1,12 @@
+<Project>
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <!-- Trim and AOT warnings are a finding of this experiment: visible in every build, recorded, never suppressed.
+             A code not listed here fails the build, and is added once it has been written down in docs/aot.md. -->
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2026;IL2104;IL3050;IL3053;IL3058</WarningsNotAsErrors>
+    </PropertyGroup>
+
+</Project>

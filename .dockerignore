@@ -1,0 +1,10 @@
+# Allowlist: only what the worker image build reads. Everything else, local secrets included, stays out.
+*
+!global.json
+!nuget.config
+!Directory.Build.props
+!Directory.Packages.props
+!src/Worker/
+src/Worker/bin/
+src/Worker/obj/
+src/Worker/Dockerfile
