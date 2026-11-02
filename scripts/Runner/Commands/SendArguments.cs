@@ -1,17 +1,25 @@
 namespace Runner.Commands;
 
-internal sealed record SendArguments(string Variant)
+internal sealed record SendArguments(IReadOnlyList<string> Variants)
 {
-    private static readonly string[] Variants = ["jit", "r2r", "aot", "jit-chiseled"];
+    private static readonly string[] KnownVariants = ["jit", "r2r", "aot", "jit-chiseled"];
 
-    // Returns null if the arguments aren't "send --local --variant <name>" with a known variant.
+    // Returns null unless the arguments are "send --local --variant <names>", with distinct known variants separated
+    // by commas.
     public static SendArguments? Parse(string[] args)
     {
-        if (args is not ["send", "--local", "--variant", var variant] || !Variants.Contains(variant))
+        if (args is not ["send", "--local", "--variant", var list])
         {
             return null;
         }
 
-        return new SendArguments(variant);
+        var variants = list.Split(',');
+
+        if (variants.Any(variant => !KnownVariants.Contains(variant)) || variants.Distinct().Count() != variants.Length)
+        {
+            return null;
+        }
+
+        return new SendArguments(variants);
     }
 }

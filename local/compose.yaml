@@ -2,7 +2,24 @@
 # ACCEPT_EULA accepts the licence terms of the emulator and SQL Server Linux:
 # https://github.com/Azure/azure-service-bus-emulator-installer/blob/main/EMULATOR_EULA.txt
 # https://go.microsoft.com/fwlink/?LinkId=746388
+#
+# The workers are behind the "workers" profile. Start everything with:
+#   docker compose -f local/compose.yaml --profile workers up -d --build
 name: scale-to-zero-local
+
+# Shared by the four workers. Each sets its variant, which is also the name of its queue and its build target.
+x-worker: &worker
+  profiles: [workers]
+  # The emulator has no healthcheck, so a worker can start before it's ready, fail to open its done sender, and exit.
+  # Restarting until the emulator answers is enough for local runs.
+  restart: on-failure
+  depends_on:
+    - emulator
+
+# The emulator's fixed connection string. SAS_KEY_VALUE is a literal placeholder, not a secret.
+x-worker-environment: &worker-environment
+  SERVICEBUS_CONNECTION_STRING: "Endpoint=sb://emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+  WORKER_DONE_QUEUE: done
 
 services:
   emulator:
@@ -35,3 +52,51 @@ services:
       timeout: 5s
       retries: 24
       start_period: 10s
+
+  worker-jit:
+    <<: *worker
+    image: scale-to-zero-worker:jit
+    build:
+      context: ..
+      dockerfile: src/Worker/Dockerfile
+      target: jit
+    environment:
+      <<: *worker-environment
+      WORKER_VARIANT: jit
+      WORKER_QUEUE: jit
+
+  worker-r2r:
+    <<: *worker
+    image: scale-to-zero-worker:r2r
+    build:
+      context: ..
+      dockerfile: src/Worker/Dockerfile
+      target: r2r
+    environment:
+      <<: *worker-environment
+      WORKER_VARIANT: r2r
+      WORKER_QUEUE: r2r
+
+  worker-aot:
+    <<: *worker
+    image: scale-to-zero-worker:aot
+    build:
+      context: ..
+      dockerfile: src/Worker/Dockerfile
+      target: aot
+    environment:
+      <<: *worker-environment
+      WORKER_VARIANT: aot
+      WORKER_QUEUE: aot
+
+  worker-jit-chiseled:
+    <<: *worker
+    image: scale-to-zero-worker:jit-chiseled
+    build:
+      context: ..
+      dockerfile: src/Worker/Dockerfile
+      target: jit-chiseled
+    environment:
+      <<: *worker-environment
+      WORKER_VARIANT: jit-chiseled
+      WORKER_QUEUE: jit-chiseled

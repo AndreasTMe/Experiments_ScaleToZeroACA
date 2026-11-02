@@ -1,6 +1,6 @@
 namespace Runner.Commands;
 
-// Sends one trigger to the variant's queue and waits for the done message that answers it.
+// Sends one trigger to each variant's queue at the same time, and waits for the done messages that answer them.
 internal static class SendCommand
 {
     private const string DoneQueue = "done";
@@ -15,19 +15,17 @@ internal static class SendCommand
     public static async Task<int> RunAsync(SendArguments arguments)
     {
         await using var client   = new ServiceBusClient(EmulatorConnectionString);
-        await using var sender   = client.CreateSender(arguments.Variant);
         await using var receiver = client.CreateReceiver(DoneQueue);
 
-        var triggerId = Guid.NewGuid().ToString();
-        await sender.SendMessageAsync(
-            new ServiceBusMessage
-            {
-                MessageId = triggerId
-            });
+        // Trigger ID to the variant whose queue it was sent to.
+        var pending   = arguments.Variants.ToDictionary(_ => Guid.NewGuid().ToString(), variant => variant);
+        var crossTalk = false;
+
+        await Task.WhenAll(pending.Select(trigger => SendTriggerAsync(client, trigger.Value, trigger.Key)));
 
         var deadline = DateTimeOffset.UtcNow + Timeout;
 
-        while (DateTimeOffset.UtcNow < deadline)
+        while (pending.Count > 0 && DateTimeOffset.UtcNow < deadline)
         {
             var message = await receiver.ReceiveMessageAsync(deadline - DateTimeOffset.UtcNow);
             if (message is null)
@@ -37,23 +35,44 @@ internal static class SendCommand
 
             await receiver.CompleteMessageAsync(message);
 
-            if (message.CorrelationId == triggerId)
+            if (!pending.Remove(message.CorrelationId, out var variant))
             {
-                var done = message.Body.ToObjectFromJson(RunnerJsonContext.Default.DoneMessage)!;
-                Print(triggerId, message.EnqueuedTime, done);
-                return 0;
+                // Left over from an earlier run that gave up. Completing it keeps it from answering a later one.
+                Console.WriteLine($"Discarded a done message for an earlier trigger: {message.CorrelationId}");
+                continue;
             }
 
-            // Left over from an earlier run that gave up. Completing it keeps it from answering a later one.
-            Console.WriteLine($"Discarded a done message for an earlier trigger: {message.CorrelationId}");
+            var done = message.Body.ToObjectFromJson(RunnerJsonContext.Default.DoneMessage)!;
+            Print(message.CorrelationId, message.EnqueuedTime, done);
+
+            if (done.Variant != variant)
+            {
+                Console.Error.WriteLine($"Cross-talk: the trigger sent to {variant} was answered by {done.Variant}.");
+                crossTalk = true;
+            }
         }
 
-        Console.Error.WriteLine($"No done message for {triggerId} within {Timeout.TotalSeconds} s.");
-        return 1;
+        foreach (var (triggerId, variant) in pending)
+        {
+            Console.Error.WriteLine($"No done message from {variant} for {triggerId} within {Timeout.TotalSeconds} s.");
+        }
+
+        return pending.Count > 0 || crossTalk ? 1 : 0;
+    }
+
+    private static async Task SendTriggerAsync(ServiceBusClient client, string variant, string triggerId)
+    {
+        await using var sender = client.CreateSender(variant);
+        await sender.SendMessageAsync(
+            new ServiceBusMessage
+            {
+                MessageId = triggerId
+            });
     }
 
     private static void Print(string triggerId, DateTimeOffset doneEnqueued, DoneMessage done)
     {
+        Console.WriteLine();
         Console.WriteLine($"Trigger           {triggerId}");
         Console.WriteLine($"Variant           {done.Variant}");
         Console.WriteLine($"Replica           {done.ReplicaName ?? "(none)"}");

@@ -2,6 +2,7 @@
     <Folder Name="/docs/">
         <File Path="docs/aot.md" />
         <File Path="docs/defaults.md" />
+        <File Path="docs/images.md" />
         <File Path="docs/platform-facts.md" />
     </Folder>
     <Folder Name="/local/">
