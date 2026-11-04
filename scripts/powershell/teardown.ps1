@@ -4,10 +4,10 @@
 Deletes the resource group and the subscription budget, after a typed confirmation.
 
 .EXAMPLE
-./scripts/teardown.ps1 -SubscriptionId <id>
+./scripts/powershell/teardown.ps1 -SubscriptionId <id>
 
 .EXAMPLE
-./scripts/teardown.ps1 -SubscriptionId <id> -DryRun
+./scripts/powershell/teardown.ps1 -SubscriptionId <id> -DryRun
 #>
 [CmdletBinding()]
 param(

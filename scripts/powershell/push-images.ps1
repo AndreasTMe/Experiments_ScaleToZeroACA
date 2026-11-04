@@ -8,10 +8,10 @@ Expects the images built locally as scale-to-zero-worker:<variant> (see docs/ima
 <login server>/scale-to-zero-worker:<variant>-<ImageTag>, which is the image infra/apps.bicep runs.
 
 .EXAMPLE
-./scripts/push-images.ps1 -SubscriptionId <id> -ImageTag <tag>
+./scripts/powershell/push-images.ps1 -SubscriptionId <id> -ImageTag <tag>
 
 .EXAMPLE
-./scripts/push-images.ps1 -SubscriptionId <id> -ImageTag <tag> -Variants aot -DryRun
+./scripts/powershell/push-images.ps1 -SubscriptionId <id> -ImageTag <tag> -Variants aot -DryRun
 #>
 [CmdletBinding()]
 param(
