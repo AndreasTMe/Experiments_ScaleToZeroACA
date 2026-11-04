@@ -3,7 +3,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:RepoRoot = Split-Path $PSScriptRoot -Parent | Split-Path -Parent
+$script:RepoRoot = Split-Path $PSScriptRoot -Parent | Split-Path -Parent | Split-Path -Parent
 
 function Get-ResourceGroupName([string] $NamePrefix, [string] $Location) {
     # Matches infra/main.bicep.

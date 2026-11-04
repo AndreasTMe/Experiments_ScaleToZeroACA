@@ -4,13 +4,13 @@
 Deploys the base infrastructure or the Container Apps.
 
 .EXAMPLE
-./scripts/deploy.ps1 -Phase base -SubscriptionId <id> -BudgetEmail <address>
+./scripts/powershell/deploy.ps1 -Phase base -SubscriptionId <id> -BudgetEmail <address>
 
 .EXAMPLE
-./scripts/deploy.ps1 -Phase apps -SubscriptionId <id> -ImageTag <tag> -PollingInterval 10 -CooldownPeriod 60
+./scripts/powershell/deploy.ps1 -Phase apps -SubscriptionId <id> -ImageTag <tag> -PollingInterval 10 -CooldownPeriod 60
 
 .EXAMPLE
-./scripts/deploy.ps1 -Phase apps -SubscriptionId <id> -ImageTag <tag> -DryRun
+./scripts/powershell/deploy.ps1 -Phase apps -SubscriptionId <id> -ImageTag <tag> -DryRun
 #>
 [CmdletBinding()]
 param(
