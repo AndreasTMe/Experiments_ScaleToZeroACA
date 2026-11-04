@@ -6,8 +6,11 @@
         <File Path="docs/platform-facts.md" />
     </Folder>
     <Folder Name="/infra/">
+        <File Path="infra/apps.bicep" />
+        <File Path="infra/apps.bicepparam" />
         <File Path="infra/main.bicep" />
         <File Path="infra/main.bicepparam" />
+        <File Path="infra/names.bicep" />
     </Folder>
     <Folder Name="/infra/modules/">
         <File Path="infra/modules/base.bicep" />
