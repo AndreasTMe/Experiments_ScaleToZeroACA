@@ -22,6 +22,14 @@
     <Folder Name="/scripts/">
         <Project Path="scripts/Runner/Runner.csproj" />
     </Folder>
+    <Folder Name="/scripts/powershell/">
+        <File Path="scripts/powershell/deploy.ps1" />
+        <File Path="scripts/powershell/push-images.ps1" />
+        <File Path="scripts/powershell/teardown.ps1" />
+    </Folder>
+    <Folder Name="/scripts/powershell/lib/">
+        <File Path="scripts/powershell/lib/Common.ps1" />
+    </Folder>
     <Folder Name="/src/">
         <Project Path="src/Worker/Worker.csproj" />
     </Folder>
