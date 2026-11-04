@@ -1,4 +1,7 @@
 // Everything in the resource group that the apps need: registry, Service Bus, environment and the pull identity.
+
+import { resourceNames } from '../names.bicep'
+
 param location string
 param namePrefix string
 param enableLogAnalytics bool
@@ -14,16 +17,16 @@ var queueNames = [
 ]
 
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
-var suffix = uniqueString(resourceGroup().id)
+var names = resourceNames(namePrefix, resourceGroup().id)
 
 resource pullIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' = {
-  name: 'id-${namePrefix}-pull'
+  name: names.pullIdentity
   location: location
   tags: tags
 }
 
 resource registry 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
-  name: 'acr${namePrefix}${suffix}'
+  name: names.registry
   location: location
   tags: tags
   sku: {
@@ -47,7 +50,7 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource namespace 'Microsoft.ServiceBus/namespaces@2026-01-01' = {
-  name: 'sb-${namePrefix}-${suffix}'
+  name: names.serviceBusNamespace
   location: location
   tags: tags
   sku: {
@@ -77,7 +80,7 @@ resource queues 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' = [
 ]
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2026-03-01' = if (enableLogAnalytics) {
-  name: 'log-${namePrefix}'
+  name: names.workspace
   location: location
   tags: tags
   properties: {
@@ -92,7 +95,7 @@ resource workspace 'Microsoft.OperationalInsights/workspaces@2026-03-01' = if (e
 }
 
 resource environment 'Microsoft.App/managedEnvironments@2026-07-01' = {
-  name: 'cae-${namePrefix}'
+  name: names.environment
   location: location
   tags: tags
   properties: {
