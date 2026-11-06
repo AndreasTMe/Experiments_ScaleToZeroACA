@@ -3,19 +3,12 @@ namespace Runner.Commands;
 // Sends one trigger to each variant's queue at the same time, and waits for the done messages that answer them.
 internal static class SendCommand
 {
-    private const string DoneQueue = "done";
-
-    // The emulator's fixed local connection string. SAS_KEY_VALUE is a literal placeholder, not a secret.
-    private const string EmulatorConnectionString =
-        "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;"
-        + "UseDevelopmentEmulator=true;";
-
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
     public static async Task<int> RunAsync(SendArguments arguments)
     {
-        await using var client   = new ServiceBusClient(EmulatorConnectionString);
-        await using var receiver = client.CreateReceiver(DoneQueue);
+        await using var client   = new ServiceBusClient(ServiceBusSettings.EmulatorConnectionString);
+        await using var receiver = client.CreateReceiver(ServiceBusSettings.DoneQueue);
 
         // Trigger ID to the variant whose queue it was sent to.
         var pending   = arguments.Variants.ToDictionary(_ => Guid.NewGuid().ToString(), variant => variant);
