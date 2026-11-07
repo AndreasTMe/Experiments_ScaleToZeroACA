@@ -1,6 +1,7 @@
 global using Azure.Messaging.ServiceBus;
 global using Runner.Commands;
 global using Runner.ContainerApps;
+global using Runner.Logs;
 global using Runner.Messaging;
 global using Runner.Sampling;
 global using System;
@@ -16,5 +17,6 @@ global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Nodes;
 global using System.Text.Json.Serialization;
+global using System.Text.RegularExpressions;
 global using System.Threading;
 global using System.Threading.Tasks;
