@@ -5,11 +5,27 @@
         <File Path="docs/images.md" />
         <File Path="docs/platform-facts.md" />
     </Folder>
+    <Folder Name="/infra/">
+        <File Path="infra/apps.bicep" />
+        <File Path="infra/apps.bicepparam" />
+        <File Path="infra/main.bicep" />
+        <File Path="infra/main.bicepparam" />
+        <File Path="infra/names.bicep" />
+    </Folder>
+    <Folder Name="/infra/modules/">
+        <File Path="infra/modules/base.bicep" />
+    </Folder>
     <Folder Name="/local/">
         <File Path="local/compose.yaml" />
         <File Path="local/emulator-config.json" />
     </Folder>
+    <Folder Name="/results/" />
+    <Folder Name="/results/first-deploy/">
+        <File Path="results/first-deploy/config.json" />
+        <File Path="results/first-deploy/samples.csv" />
+    </Folder>
     <Folder Name="/scripts/">
+        <Project Path="scripts/InfraRunner/InfraRunner.csproj" />
         <Project Path="scripts/Runner/Runner.csproj" />
     </Folder>
     <Folder Name="/src/">
