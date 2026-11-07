@@ -88,6 +88,7 @@ resource workspace 'Microsoft.OperationalInsights/workspaces@2026-03-01' = if (e
       name: 'PerGB2018'
     }
     retentionInDays: 30
+    // The cap is an int, so 1 GB a day is the smallest. The runs ingest a few MB.
     workspaceCapping: {
       dailyQuotaGb: 1
     }

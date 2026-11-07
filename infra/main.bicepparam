@@ -5,5 +5,6 @@ using 'main.bicep'
 
 param location = 'uksouth'
 param namePrefix = 'stz'
-param enableLogAnalytics = false
+// On, because the system log stream doesn't keep a removed replica's events long enough to read them per sample.
+param enableLogAnalytics = true
 param budgetEmail = readEnvironmentVariable('STZ_BUDGET_EMAIL')

@@ -191,6 +191,12 @@ workspace and costs nothing, so try it first: right after the first live sample,
 `az containerapp logs show --type system --format json --tail 300` and see whether it names the replica and how
 precise its times are. The workspace, with `dailyQuotaGb` capped, is the fallback.
 
+Tried on 2026-11-07: the stream names the replica and the reason, but its times are whole seconds and one app's
+replica events were already gone when read. So the workspace is switched on in `main.bicepparam`, capped at 1 GB a
+day. `dailyQuotaGb` is an int, so that's the smallest cap. The daily cap page (2026-01-09) says the cap "can't stop
+data collection at precisely the specified cap level", gives no minimum, and says collection resumes at a reset hour
+that can't be configured.
+
 ## API versions for the other resources
 
 The newest non-preview version of each type in the template reference, read 2026-11-02. Every template reference page
