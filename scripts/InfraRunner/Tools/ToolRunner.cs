@@ -14,15 +14,18 @@ internal sealed class ToolRunner
 
     public bool DryRun { get; }
 
-    // The command's output goes straight to the console.
-    public async Task RunAsync(string tool, IReadOnlyList<string> arguments)
+    // The command's output goes straight to the console. The environment variables are added for this command only.
+    public async Task RunAsync(
+        string tool,
+        IReadOnlyList<string> arguments,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
-        if (Announce(tool, arguments))
+        if (Announce(tool, arguments, environment))
         {
             return;
         }
 
-        using var process = Start(tool, arguments, captureOutput: false);
+        using var process = Start(tool, arguments, environment, false);
         await process.WaitForExitAsync();
         ThrowOnFailure(process, tool, arguments);
     }
@@ -30,12 +33,12 @@ internal sealed class ToolRunner
     // Errors and warnings still go to the console; only the standard output is returned.
     public async Task<string> CaptureAsync(string tool, IReadOnlyList<string> arguments, string dryRunOutput)
     {
-        if (Announce(tool, arguments))
+        if (Announce(tool, arguments, null))
         {
             return dryRunOutput;
         }
 
-        using var process = Start(tool, arguments, captureOutput: true);
+        using var process = Start(tool, arguments, null, true);
         var       output  = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
         ThrowOnFailure(process, tool, arguments);
@@ -51,10 +54,15 @@ internal sealed class ToolRunner
         return document.RootElement.Clone();
     }
 
-    // Prints the command line. Returns true in a dry run, where the command isn't run.
-    private bool Announce(string tool, IReadOnlyList<string> arguments)
+    // Prints the environment variables and the command line. Returns true in a dry run, where the command isn't run.
+    private bool Announce(
+        string tool,
+        IReadOnlyList<string> arguments,
+        IReadOnlyDictionary<string, string>? environment)
     {
-        Console.WriteLine($"{(DryRun ? "[dry run]" : ">")} {Format(tool, arguments)}");
+        var variables = environment?.Select(variable => $"{variable.Key}={Quote(variable.Value)} ") ?? [];
+
+        Console.WriteLine($"{(DryRun ? "[dry run]" : ">")} {string.Concat(variables)}{Format(tool, arguments)}");
         return DryRun;
     }
 
@@ -66,7 +74,11 @@ internal sealed class ToolRunner
             ? argument
             : $"'{argument.Replace("'", "''", StringComparison.Ordinal)}'";
 
-    private static Process Start(string tool, IReadOnlyList<string> arguments, bool captureOutput)
+    private static Process Start(
+        string tool,
+        IReadOnlyList<string> arguments,
+        IReadOnlyDictionary<string, string>? environment,
+        bool captureOutput)
     {
         var throughCmd = tool == "az" && OperatingSystem.IsWindows();
 
@@ -94,6 +106,11 @@ internal sealed class ToolRunner
         foreach (var argument in arguments)
         {
             start.ArgumentList.Add(argument);
+        }
+
+        foreach (var (name, value) in environment ?? new Dictionary<string, string>())
+        {
+            start.Environment[name] = value;
         }
 
         return Process.Start(start) ?? throw new InvalidOperationException($"Could not start {tool}.");

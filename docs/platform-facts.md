@@ -220,7 +220,7 @@ Properties the infrastructure will set, from the version pages above:
 
 | Resource                 | Property                                                       | Values                                                                                                             | Note                                                                                                                      |
 |--------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| managedEnvironments      | `appLogsConfiguration.destination`                             | `log-analytics`, `azure-monitor`, `none`                                                                           | `logAnalyticsConfiguration` only with `log-analytics`                                                                     |
+| managedEnvironments      | `appLogsConfiguration.destination`                             | `log-analytics`, `azure-monitor`, `none` (the API rejects `none`, see below)                                       | `logAnalyticsConfiguration` only with `log-analytics`                                                                     |
 | managedEnvironments      | `environmentMode`                                              | `ConsumptionOnly`, `WorkloadProfiles`, `Express`, `Archived`                                                       | **Not explained.** The page doesn't say whether leaving out `workloadProfiles` alone gives a Consumption-only environment |
 | Service Bus namespaces   | `sku.name`                                                     | `Basic`, `Standard`, `Premium`                                                                                     |                                                                                                                           |
 | Service Bus namespaces   | `disableLocalAuth`                                             | bool                                                                                                               | "disables SAS authentication", so it stays off while the apps use connection strings                                      |
@@ -295,6 +295,11 @@ Notes:
 - A `.bicepparam` file can be passed to `--parameters` without `--template-file`, with a second `--parameters`
   of inline `key=value` overrides that take precedence over the file (Bicep parameter-files page, 2026-06-17; Azure
   CLI 2.53.0 or later). The deployment group page adds that a `.bicepparam` file can be given only once.
+- The `.bicepparam` file is built on its own first, so it has to assign every parameter without a default, even
+  one that's also passed inline: otherwise the build stops with BCP258 (seen on a real `deploy base`). The two files
+  read `budgetEmail` and `imageTag` with `readEnvironmentVariable` from `STZ_BUDGET_EMAIL` and `STZ_IMAGE_TAG`, which
+  InfraRunner sets for the `az` call. With the variable unset, `az bicep build-params` stops with BCP427 (Bicep
+  0.49.2; functions page, 2026-06-26).
 - Neither the `az group exists` nor the `az deployment sub show` page shows output, so the `true` or `false` of the
   first and the `properties.outputs.<name>.value` path of the second are to be confirmed on the first run.
   InfraRunner stops with an error if either is missing.
@@ -310,7 +315,8 @@ Notes:
   from the worker's Listen and Send rule. Whether Manage can be scoped to one queue is still to check.
 - Leave `pollingInterval` and `cooldownPeriod` unset by default, and pass them only for the configs that change them.
 - Read the settings back from the live app before trusting a config's samples, since the range is undocumented.
-- Pin the versions in the table above. Set logs destination `none`, and set the registry's `roleAssignmentMode`
+- Pin the versions in the table above. Leave out `appLogsConfiguration` to keep logs off (a real `deploy base` failed on
+  `destination: 'none'` with "App Logs destination 'none' not supported"), and set the registry's `roleAssignmentMode`
   explicitly so `AcrPull` applies. `environmentMode: 'ConsumptionOnly'` is the likely way to keep the environment
   Consumption-only, but the docs don't explain it, so read the mode back after the first deploy.
 - The registry is the main fixed cost, about $5 a month. Watch for the new environment management charge in Cost

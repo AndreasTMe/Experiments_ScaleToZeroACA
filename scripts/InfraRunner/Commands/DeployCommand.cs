@@ -3,6 +3,11 @@ namespace InfraRunner.Commands;
 // Deploys the base infrastructure at subscription scope, or the Container Apps into its resource group.
 internal static class DeployCommand
 {
+    // A parameters file has to assign every parameter without a default, even one that's also passed inline, so the
+    // two .bicepparam files read these values from the environment.
+    private const string BudgetEmailVariable = "STZ_BUDGET_EMAIL";
+    private const string ImageTagVariable    = "STZ_IMAGE_TAG";
+
     public static async Task RunAsync(DeployArguments arguments)
     {
         var runner = new ToolRunner(arguments.DryRun);
@@ -21,9 +26,12 @@ internal static class DeployCommand
                     "--parameters", RepositoryRoot.PathTo(Path.Combine("infra", "main.bicepparam")),
                     "--parameters",
                     $"namePrefix={arguments.NamePrefix}",
-                    $"location={arguments.Location}",
-                    $"budgetEmail={arguments.BudgetEmail}"
-                ]);
+                    $"location={arguments.Location}"
+                ],
+                new Dictionary<string, string>
+                {
+                    [BudgetEmailVariable] = arguments.BudgetEmail!
+                });
             return;
         }
 
@@ -35,11 +43,7 @@ internal static class DeployCommand
         }
 
         // Inline values take precedence over the parameter file's.
-        List<string> overrides =
-        [
-            $"namePrefix={arguments.NamePrefix}",
-            $"imageTag={arguments.ImageTag}"
-        ];
+        List<string> overrides = [$"namePrefix={arguments.NamePrefix}"];
 
         if (arguments.MinReplicas is { } minReplicas)
         {
@@ -65,6 +69,10 @@ internal static class DeployCommand
                 "--parameters", RepositoryRoot.PathTo(Path.Combine("infra", "apps.bicepparam")),
                 "--parameters",
                 .. overrides
-            ]);
+            ],
+            new Dictionary<string, string>
+            {
+                [ImageTagVariable] = arguments.ImageTag!
+            });
     }
 }
