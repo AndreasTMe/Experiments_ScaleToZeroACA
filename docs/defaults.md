@@ -19,7 +19,7 @@ How each value was checked:
 | Azure.Identity               | 1.21.0   |
 | Microsoft.Extensions.Hosting | 10.0.14  |
 | Azure CLI                    | 2.91.0   |
-| Bicep CLI                    | 0.48.1   |
+| Bicep CLI                    | 0.49.2   |
 
 Local container images, pinned by digest in [local/compose.yaml](../local/compose.yaml):
 
@@ -62,9 +62,9 @@ marked UNVERIFIED need a live environment.
 | Idle rate for a replica with min replicas 1         | Lower than the active rate                          | vCPU $0.000004/s against $0.000034/s active; memory the same as active | docs       |
 | Idle billing with min replicas 0                    | None                                                | None: only revisions with min replicas above 0 qualify                 | docs       |
 | Environment management charge, Consumption only     | None                                                | Meter at $0.10/h from 2026-11-01; docs don't say who pays it           | docs       |
-| System logs readable without Log Analytics          | Yes, with `az containerapp logs show --type system` | Command exists, no workspace requirement stated                        | docs       |
-| System log fields and time precision                | Replica name, event, sub-second times               |                                                                        | UNVERIFIED |
-| Live scale settings with polling and cooldown unset | 30 s, 300 s                                         |                                                                        | UNVERIFIED |
+| System logs readable without Log Analytics          | Yes, with `az containerapp logs show --type system` | Yes, with no workspace, 2026-11-07                                     | runtime    |
+| System log fields and time precision                | Replica name, event, sub-second times               | Replica name and reason; whole seconds; pull time in ms in the message | runtime    |
+| Live scale settings with polling and cooldown unset | 30 s, 300 s                                         | 30 s, 300 s on all four apps, from `az containerapp show`, 2026-11-07  | runtime    |
 | 5 s and 10 s polling accepted and honoured          | Yes                                                 |                                                                        | UNVERIFIED |
 | Environment management charge on the bill           | None                                                |                                                                        | UNVERIFIED |
 | `Azure.Messaging.ServiceBus` works with Native AOT  | Unknown. Build with trimming and AOT warnings on    | No warnings; emulator round trip OK                                    | runtime    |

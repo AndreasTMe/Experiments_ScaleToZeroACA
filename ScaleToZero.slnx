@@ -19,6 +19,11 @@
         <File Path="local/compose.yaml" />
         <File Path="local/emulator-config.json" />
     </Folder>
+    <Folder Name="/results/" />
+    <Folder Name="/results/first-deploy/">
+        <File Path="results/first-deploy/config.json" />
+        <File Path="results/first-deploy/samples.csv" />
+    </Folder>
     <Folder Name="/scripts/">
         <Project Path="scripts/InfraRunner/InfraRunner.csproj" />
         <Project Path="scripts/Runner/Runner.csproj" />
