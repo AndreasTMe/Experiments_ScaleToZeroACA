@@ -22,7 +22,7 @@ internal sealed class SamplesCsv : IDisposable
 
     public void Append(SampleRow row)
     {
-        var line = FormatLine(Values(row));
+        var line = Csv.FormatLine(Values(row));
 
         lock (_lock)
         {
@@ -39,7 +39,7 @@ internal sealed class SamplesCsv : IDisposable
         var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
         var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
-        writer.Write(FormatLine(Columns));
+        writer.Write(Csv.FormatLine(Columns));
         writer.Flush();
         return new SamplesCsv(writer);
     }
@@ -81,12 +81,4 @@ internal sealed class SamplesCsv : IDisposable
 
     private static string? Time(DateTimeOffset? value) =>
         value?.UtcDateTime.ToString("O", CultureInfo.InvariantCulture);
-
-    // RFC 4180: a field with a comma, quote or line break is quoted, with quotes doubled. Lines end in CRLF.
-    private static string FormatLine(IEnumerable<string?> values) => string.Join(',', values.Select(Escape)) + "\r\n";
-
-    private static string Escape(string? value) =>
-        value is null || value.IndexOfAny([',', '"', '\r', '\n']) < 0
-            ? value ?? ""
-            : $"\"{value.Replace("\"", "\"\"")}\"";
 }

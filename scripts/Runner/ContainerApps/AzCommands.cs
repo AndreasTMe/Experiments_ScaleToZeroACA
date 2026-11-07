@@ -24,4 +24,18 @@ internal static class AzCommands
 
     public static string[] RepositoryShow(string registry, string image) =>
         ["acr", "repository", "show", "--name", registry, "--image", image, "-o", "json"];
+
+    public static string[] ExtensionShow(string name) => ["extension", "show", "--name", name, "-o", "json"];
+
+    public static string[] WorkspaceShow(string resourceGroup, string workspace) =>
+    [
+        "monitor", "log-analytics", "workspace", "show",
+        "--resource-group", resourceGroup,
+        "--workspace-name", workspace,
+        "-o", "json"
+    ];
+
+    // Without --timespan the query reads all retained data, so the window is the query's own TimeGenerated filter.
+    public static string[] LogAnalyticsQuery(string workspaceGuid, string query) =>
+        ["monitor", "log-analytics", "query", "--workspace", workspaceGuid, "--analytics-query", query, "-o", "json"];
 }

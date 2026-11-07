@@ -312,6 +312,8 @@ locally. Reference pages are under `https://learn.microsoft.com/en-us/cli/azure/
 | `az group delete`                                      | `--name` (required), `--yes`, `--no-wait`                                                                     | Core, GA                          | [group](https://learn.microsoft.com/en-us/cli/azure/group?view=azure-cli-latest)                                       |
 | `az consumption budget show`, `delete`                 | `--budget-name` (required)                                                                                    | Core, **preview**                 | [consumption budget](https://learn.microsoft.com/en-us/cli/azure/consumption/budget?view=azure-cli-latest)             |
 | `az monitor log-analytics query`                       | `--workspace` (required, "GUID of the Log Analytics Workspace"), `--analytics-query` (required), `--timespan` | **Extension** `log-analytics`, GA | [monitor log-analytics](https://learn.microsoft.com/en-us/cli/azure/monitor/log-analytics?view=azure-cli-latest)       |
+| `az monitor log-analytics workspace show`              | `--resource-group`, `--workspace-name`; the runner reads `customerId`                                         | Core, GA                          | [workspace](https://learn.microsoft.com/en-us/cli/azure/monitor/log-analytics/workspace?view=azure-cli-latest)         |
+| `az extension show`                                    | `--name` (required)                                                                                           | Core, GA                          | [extension](https://learn.microsoft.com/en-us/cli/azure/extension?view=azure-cli-latest)                               |
 
 Notes:
 
@@ -335,6 +337,9 @@ Notes:
 - `az monitor log-analytics query` needs the `log-analytics` extension, which isn't installed here. Running it offers to
   install it, so a script should install it explicitly rather than rely on the prompt. It's only needed if the
   workspace is switched on.
+- The query page says `--timespan` defaults to all available data, so the runner leaves it out and bounds the
+  query with its own `TimeGenerated` filter. Neither page shows output: the rows as a JSON array and `customerId`
+  at the top level were seen on real runs.
 - Whether `az resource delete` can remove a budget isn't covered by any page read; `az consumption budget delete` is
   the documented way.
 
