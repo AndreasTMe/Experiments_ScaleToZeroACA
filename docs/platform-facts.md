@@ -29,6 +29,7 @@ page was read. "Page date" is the date in the page's own metadata.
 | acrabac  | [ACR ABAC repository permissions](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-rbac-abac-repository-permissions)                                                      | 2025-12-11       | 2026-11-02 |
 | acrcli   | [Create a registry with the Azure CLI](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-get-started-azure-cli)                                                            | 2023-10-31       | 2026-11-02 |
 | clirel   | [Azure CLI release notes](https://learn.microsoft.com/en-us/cli/azure/release-notes-azure-cli)                                                                                                         | 2026-10-06 entry | 2026-11-02 |
+| revs     | [Revisions in Azure Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/revisions)                                                                                                  | not recorded     | 2026-11-07 |
 
 ## API version for the Container Apps
 
@@ -304,7 +305,7 @@ locally. Reference pages are under `https://learn.microsoft.com/en-us/cli/azure/
 | `az acr manifest list-metadata`                        | `--registry`, `--name` (the repository)                                                                       | Core, **preview**                 | [acr manifest](https://learn.microsoft.com/en-us/cli/azure/acr/manifest?view=azure-cli-latest)                         |
 | `az containerapp replica list`                         | `--name`, `--resource-group` (both required); `--revision` defaults to the latest                             | Core, GA                          | [containerapp replica](https://learn.microsoft.com/en-us/cli/azure/containerapp/replica?view=azure-cli-latest)         |
 | `az containerapp show`                                 | `--name`, `--resource-group`, `-o json`; the runner reads `properties.template`                               | Core, GA                          | [containerapp](https://learn.microsoft.com/en-us/cli/azure/containerapp?view=azure-cli-latest)                         |
-| `az containerapp update`                               | `--name`, `--resource-group`, `--image`, `--revision-suffix`                                                  | Core, GA                          | [containerapp](https://learn.microsoft.com/en-us/cli/azure/containerapp?view=azure-cli-latest)                         |
+| `az containerapp update`                               | `--name`, `--resource-group`, `--container-name`, `--image`, `-o json`                                        | Core, GA                          | [containerapp](https://learn.microsoft.com/en-us/cli/azure/containerapp?view=azure-cli-latest)                         |
 | `az containerapp revision list`                        | `--name`, `--resource-group` (both required), `--all`                                                         | Core, GA                          | [containerapp revision](https://learn.microsoft.com/en-us/cli/azure/containerapp/revision?view=azure-cli-latest)       |
 | `az containerapp revision show`                        | `--revision` (required), `--name`, `--resource-group`                                                         | Core, GA                          | [containerapp revision](https://learn.microsoft.com/en-us/cli/azure/containerapp/revision?view=azure-cli-latest)       |
 | `az containerapp logs show`                            | `--name`, `--resource-group` (both required), `--type system`, `--format json`, `--tail` (0 to 300)           | Core, GA                          | [containerapp logs](https://learn.microsoft.com/en-us/cli/azure/containerapp/logs?view=azure-cli-latest)               |
@@ -343,6 +344,12 @@ Notes:
 - The query page says `--timespan` defaults to all available data, so the runner leaves it out and bounds the
   query with its own `TimeGenerated` filter. Neither page shows output: the rows as a JSON array and `customerId`
   at the top level were seen on real runs.
+- The `containerapp update` page shows no output and doesn't say whether it waits for the new revision. The runner's
+  `--forced-pull` reads `containerapp show` until `latestReadyRevisionName` equals `latestRevisionName`, and stops
+  if `provisioningState` (InProgress, Succeeded, Failed, Canceled or Deleting in the spec) is `Failed`.
+- In single revision mode a new revision is "provisioned, activated, and scaled", and "Activating" means zero running
+  replicas with one being provisioned (revs). That replica may pull a forced-pull copy before the sample's trigger, so
+  the sample's own pull could find it cached. The pull duration and size in the system logs show which happened.
 - Whether `az resource delete` can remove a budget isn't covered by any page read; `az consumption budget delete` is
   the documented way.
 

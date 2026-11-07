@@ -8,6 +8,7 @@ internal sealed record RunConfig(
     string Kind,
     IReadOnlyList<string> Variants,
     int Samples,
+    string? ForcedPullTag,
     double SampleTimeoutSeconds,
     double ReplicaPollSeconds,
     string? ResourceGroup,

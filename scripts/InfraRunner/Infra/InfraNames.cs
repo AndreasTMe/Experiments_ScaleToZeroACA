@@ -14,4 +14,8 @@ internal static class InfraNames
     public static string AppsDeployment(string namePrefix) => $"{namePrefix}-apps";
 
     public static string ImageTag(string variant, string imageTag) => $"{variant}-{imageTag}";
+
+    // The runner's --forced-pull uses the same names.
+    public static string ForcedPullTag(string variant, string imageTag, int copy) =>
+        $"{ImageTag(variant, imageTag)}-pull-{copy:D2}";
 }
