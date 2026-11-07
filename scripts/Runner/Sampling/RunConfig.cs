@@ -10,7 +10,6 @@ internal sealed record RunConfig(
     int Samples,
     double SampleTimeoutSeconds,
     double ReplicaPollSeconds,
-    string? SubscriptionId,
     string? ResourceGroup,
     string RunnerSdkVersion,
     string RunnerRuntime,

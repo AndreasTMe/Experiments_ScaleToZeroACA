@@ -4,8 +4,6 @@ namespace Runner.ContainerApps;
 // Flags are checked against docs/platform-facts.md.
 internal static class AzCommands
 {
-    public static string[] AccountShow() => ["account", "show", "-o", "json"];
-
     public static string[] Version() => ["version", "-o", "json"];
 
     public static string[] AppShow(string app, string resourceGroup) =>
