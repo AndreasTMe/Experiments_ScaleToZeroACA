@@ -75,8 +75,8 @@ internal static class SampleCommand
 
         // Local runs go under results/dev, which git ignores.
         var runDirectory = arguments.Local
-            ? Path.Combine(FindRepositoryRoot(), "results", "dev", runName)
-            : Path.Combine(FindRepositoryRoot(), "results", runName);
+            ? Path.Combine(RepositoryRoot.Find(), "results", "dev", runName)
+            : Path.Combine(RepositoryRoot.Find(), "results", runName);
 
         if (Directory.Exists(runDirectory))
         {
@@ -440,21 +440,5 @@ internal static class SampleCommand
             : row.Error;
 
         Console.WriteLine($"{row.Variant,-13} {row.Sample,3}/{samples} {row.Kind} {row.Status,-10} {detail}");
-    }
-
-    // The folder with ScaleToZero.slnx, so results land in the same place whichever folder the runner starts from.
-    private static string FindRepositoryRoot()
-    {
-        for (var directory = new DirectoryInfo(Environment.CurrentDirectory);
-             directory is not null;
-             directory = directory.Parent)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "ScaleToZero.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        return Environment.CurrentDirectory;
     }
 }

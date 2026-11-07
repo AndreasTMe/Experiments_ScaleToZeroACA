@@ -20,9 +20,25 @@
         <File Path="local/emulator-config.json" />
     </Folder>
     <Folder Name="/results/" />
+    <Folder Name="/results/baseline-cold/">
+        <File Path="results/baseline-cold/config.json" />
+        <File Path="results/baseline-cold/samples.csv" />
+        <File Path="results/baseline-cold/summary.json" />
+        <File Path="results/baseline-cold/summary.md" />
+    </Folder>
+    <Folder Name="/results/baseline-warm/">
+        <File Path="results/baseline-warm/config.json" />
+        <File Path="results/baseline-warm/samples.csv" />
+        <File Path="results/baseline-warm/summary.json" />
+        <File Path="results/baseline-warm/summary.md" />
+    </Folder>
     <Folder Name="/results/first-deploy/">
         <File Path="results/first-deploy/config.json" />
         <File Path="results/first-deploy/samples.csv" />
+    </Folder>
+    <Folder Name="/results/first-run-log-analytics-added/">
+        <File Path="results/first-run-log-analytics-added/config.json" />
+        <File Path="results/first-run-log-analytics-added/samples.csv" />
     </Folder>
     <Folder Name="/scripts/">
         <Project Path="scripts/InfraRunner/InfraRunner.csproj" />

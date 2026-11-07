@@ -1,0 +1,187 @@
+{
+  "run": "baseline-warm",
+  "kind": "warm",
+  "warmRun": null,
+  "groups": [
+    {
+      "variant": "jit-chiseled",
+      "pollingIntervalSeconds": 30,
+      "cooldownPeriodSeconds": 300,
+      "samples": 30,
+      "statuses": {
+        "ok": 30
+      },
+      "endToEnd": {
+        "count": 30,
+        "medianMs": 6,
+        "p90Ms": 22,
+        "maxMs": 23
+      },
+      "warmMedianMs": null,
+      "coldMinusWarmMedianMs": null,
+      "phases": [
+        {
+          "name": "delivery",
+          "from": "triggerEnqueued",
+          "to": "messageReceived",
+          "duration": {
+            "count": 30,
+            "medianMs": 17,
+            "p90Ms": 23.3,
+            "maxMs": 32.1
+          }
+        },
+        {
+          "name": "handling",
+          "from": "messageReceived",
+          "to": "doneEnqueued",
+          "duration": {
+            "count": 30,
+            "medianMs": -7.9,
+            "p90Ms": -0.7,
+            "maxMs": -0.6
+          }
+        }
+      ],
+      "phaseMediansSumMs": 9.1,
+      "completeSamples": 30,
+      "maxPhaseSumErrorMs": 0,
+      "pulls": []
+    },
+    {
+      "variant": "jit",
+      "pollingIntervalSeconds": 30,
+      "cooldownPeriodSeconds": 300,
+      "samples": 30,
+      "statuses": {
+        "ok": 30
+      },
+      "endToEnd": {
+        "count": 30,
+        "medianMs": 10.5,
+        "p90Ms": 25.1,
+        "maxMs": 44
+      },
+      "warmMedianMs": null,
+      "coldMinusWarmMedianMs": null,
+      "phases": [
+        {
+          "name": "delivery",
+          "from": "triggerEnqueued",
+          "to": "messageReceived",
+          "duration": {
+            "count": 30,
+            "medianMs": 20.5,
+            "p90Ms": 30.5,
+            "maxMs": 46.4
+          }
+        },
+        {
+          "name": "handling",
+          "from": "messageReceived",
+          "to": "doneEnqueued",
+          "duration": {
+            "count": 30,
+            "medianMs": -8.1,
+            "p90Ms": -2.4,
+            "maxMs": 0.5
+          }
+        }
+      ],
+      "phaseMediansSumMs": 12.4,
+      "completeSamples": 30,
+      "maxPhaseSumErrorMs": 0,
+      "pulls": []
+    },
+    {
+      "variant": "r2r",
+      "pollingIntervalSeconds": 30,
+      "cooldownPeriodSeconds": 300,
+      "samples": 30,
+      "statuses": {
+        "ok": 30
+      },
+      "endToEnd": {
+        "count": 30,
+        "medianMs": 12,
+        "p90Ms": 25,
+        "maxMs": 30
+      },
+      "warmMedianMs": null,
+      "coldMinusWarmMedianMs": null,
+      "phases": [
+        {
+          "name": "delivery",
+          "from": "triggerEnqueued",
+          "to": "messageReceived",
+          "duration": {
+            "count": 30,
+            "medianMs": 20.4,
+            "p90Ms": 28.1,
+            "maxMs": 35
+          }
+        },
+        {
+          "name": "handling",
+          "from": "messageReceived",
+          "to": "doneEnqueued",
+          "duration": {
+            "count": 30,
+            "medianMs": -7.8,
+            "p90Ms": -1,
+            "maxMs": -0.7
+          }
+        }
+      ],
+      "phaseMediansSumMs": 12.6,
+      "completeSamples": 30,
+      "maxPhaseSumErrorMs": 0,
+      "pulls": []
+    },
+    {
+      "variant": "aot",
+      "pollingIntervalSeconds": 30,
+      "cooldownPeriodSeconds": 300,
+      "samples": 30,
+      "statuses": {
+        "ok": 30
+      },
+      "endToEnd": {
+        "count": 30,
+        "medianMs": 10,
+        "p90Ms": 17.8,
+        "maxMs": 31
+      },
+      "warmMedianMs": null,
+      "coldMinusWarmMedianMs": null,
+      "phases": [
+        {
+          "name": "delivery",
+          "from": "triggerEnqueued",
+          "to": "messageReceived",
+          "duration": {
+            "count": 30,
+            "medianMs": 18,
+            "p90Ms": 30.9,
+            "maxMs": 36.4
+          }
+        },
+        {
+          "name": "handling",
+          "from": "messageReceived",
+          "to": "doneEnqueued",
+          "duration": {
+            "count": 30,
+            "medianMs": -7.4,
+            "p90Ms": -3,
+            "maxMs": -0.3
+          }
+        }
+      ],
+      "phaseMediansSumMs": 10.6,
+      "completeSamples": 30,
+      "maxPhaseSumErrorMs": 0,
+      "pulls": []
+    }
+  ]
+}

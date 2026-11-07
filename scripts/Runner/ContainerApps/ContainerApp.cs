@@ -19,7 +19,9 @@ internal sealed class ContainerApp
 
     public async Task<int> GetReplicaCountAsync(CancellationToken cancellationToken)
     {
-        var replicas = await AzCli.RunJsonAsync(AzCommands.ReplicaList(Name, ResourceGroup), cancellationToken);
+        var replicas = await AzCli.RunJsonWithRetriesAsync(
+            AzCommands.ReplicaList(Name, ResourceGroup),
+            cancellationToken);
 
         // az prints the list itself; the REST API wraps it in "value". Either is counted the same way.
         if (replicas.ValueKind == JsonValueKind.Object && replicas.TryGetProperty("value", out var value))
@@ -84,7 +86,7 @@ internal sealed class ContainerApp
             return cached;
         }
 
-        var details = await AzCli.RunJsonAsync(
+        var details = await AzCli.RunJsonWithRetriesAsync(
             AzCommands.RevisionShow(Name, ResourceGroup, revision),
             cancellationToken);
 
@@ -108,7 +110,7 @@ internal sealed class ContainerApp
 
         if (SplitRegistryImage(image) is var (registry, repositoryAndTag))
         {
-            var manifest = await AzCli.RunJsonAsync(
+            var manifest = await AzCli.RunJsonWithRetriesAsync(
                 AzCommands.RepositoryShow(registry, repositoryAndTag),
                 cancellationToken);
             digest = manifest.GetProperty("digest").GetString();
