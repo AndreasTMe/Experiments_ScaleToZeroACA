@@ -69,11 +69,12 @@ The base image defaults were left alone, so these come with each variant:
 
 ## Forced-pull copies
 
-Every pull in the baseline took about 100 ms, even the first sample's, so the nodes already had the layers. A new tag
-on the same digest wouldn't change that. `push-images --forced-pulls <n>` also pushes `n` copies of each variant as
-`<variant>-<tag>-pull-01` and up. Each copy is built `FROM scratch` with `COPY --from` of the whole image plus a
-random `pull-nonce` file, so all its files are in one layer no node has seen. The config the container runs with (`Env`,
-`WorkingDir`, `User`, `Entrypoint`, `Cmd`) is written out again; labels aren't.
+Every pull in the baseline took about 100 ms, even the first sample's, so the nodes already had the layers. A new tag on
+the same digest wouldn't change that. `push-images --forced-pulls <n>` also pushes `n` copies of each variant as
+`<variant>-<tag>-pull-01` and up. Each copy is built `FROM scratch` with `COPY --from` of the whole image plus a random
+`pull-nonce` file, so all its files are in one layer no node has seen. The config the container runs with (`Env`,
+`WorkingDir`, `User`, `Entrypoint`, `Cmd`) is written out again; labels aren't. Copies whose tag is already in the
+registry are skipped, so a push that was stopped carries on when it's run again.
 
 Checked locally on all four variants: the copies have the same `Env`, `User`, `WorkingDir` and `Entrypoint` as the
 image, the same owner and mode on every file, and each started its worker. A copy is one layer plus the empty layer
