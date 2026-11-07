@@ -197,6 +197,29 @@ day. `dailyQuotaGb` is an int, so that's the smallest cap. The daily cap page (2
 data collection at precisely the specified cap level", gives no minimum, and says collection resumes at a reset hour
 that can't be configured.
 
+Read from the workspace on 2026-11-07, one cold sample per app:
+
+- **Columns.** `getschema` lists `ReplicaName_s`, `Reason_s`, `Count_d`, `Type_s`, `EventSource_s`, `TimeStamp_s`,
+  `time_s` and `_timestamp_d` besides the documented ones.
+- **Event time is `time_s`.** It's RFC 3339 with nanoseconds. `_timestamp_d` is the same instant as Unix seconds, to
+  about 10 µs. `TimeStamp_s` is whole seconds. `TimeGenerated` is the ingestion batch: several apps share one value,
+  and it puts the pull after the container start, so it isn't used.
+- **Reasons on a replica**, in order: `AssigningReplica`, `ContainerCreated` and `ContainerStarted` twice,
+  `PullingImage`, `ImagePulled` (the pull time and image size in the message), `ContainerCreated`,
+  `ContainerStarted`, and `StoppingContainer` at scale-in. The created and started events don't name the container,
+  so the pair after `ImagePulled` is taken as the worker's. The two pairs before it are assumed to be platform
+  containers; no page says so.
+- **The scale-out event** ("Scaled apps/v1.Deployment ... from 0 to 1, triggered by s0-azure-servicebus-...") has an
+  empty `ReplicaName_s` and carries only the revision.
+- On jit, about 18 s passed between `AssigningReplica` and `PullingImage`; the pull itself took 109 ms.
+- **Console logs** are in `ContainerAppConsoleLogs_CL`. `ContainerGroupName_s` equals the system log's
+  `ReplicaName_s`, so the two tables join on it, and `ContainerName_s` is `worker`. Only the worker wrote console
+  lines, so the other containers don't show there. `time_s` has nanoseconds here too. The simple console logger
+  writes each entry as two rows, the header with its timestamp and then the message.
+- The "Handled" line carries the trigger's message id, which the runner sets to the trigger id, so a sample's done
+  sent time can be read from it. The worker's process start (17:15:31.127) came about 80 ms before the system log's
+  `ContainerStarted` (17:15:31.207), so that event is logged after the process is already running.
+
 ## API versions for the other resources
 
 The newest non-preview version of each type in the template reference, read 2026-11-02. Every template reference page
