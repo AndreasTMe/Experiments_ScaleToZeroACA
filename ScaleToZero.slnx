@@ -24,6 +24,10 @@
         <File Path="results/first-deploy/config.json" />
         <File Path="results/first-deploy/samples.csv" />
     </Folder>
+    <Folder Name="/results/first-run-log-analytics-added/">
+        <File Path="results/first-run-log-analytics-added/config.json" />
+        <File Path="results/first-run-log-analytics-added/samples.csv" />
+    </Folder>
     <Folder Name="/scripts/">
         <Project Path="scripts/InfraRunner/InfraRunner.csproj" />
         <Project Path="scripts/Runner/Runner.csproj" />
