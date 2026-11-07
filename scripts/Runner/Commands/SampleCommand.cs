@@ -300,7 +300,20 @@ internal static class SampleCommand
             }
         }
 
-        return new SampleRow(variant, sample, kind, "ok", triggerId, zeroObserved, sent, reply, image, digest, error);
+        var publicImage = image is null ? null : PublicNames.Image(image);
+
+        return new SampleRow(
+            variant,
+            sample,
+            kind,
+            "ok",
+            triggerId,
+            zeroObserved,
+            sent,
+            reply,
+            publicImage,
+            digest,
+            error);
     }
 
     // Wakes the app for warm samples. Its done message is awaited but not recorded.
@@ -342,15 +355,13 @@ internal static class SampleCommand
         Dictionary<string, ContainerApp> apps,
         CancellationToken cancellationToken)
     {
-        string?      subscriptionId = null;
-        JsonElement? azVersion      = null;
-        var          snapshots      = new List<AppSnapshot>();
+        // The subscription id isn't recorded: results go into a public repo.
+        JsonElement? azVersion = null;
+        var          snapshots = new List<AppSnapshot>();
 
         if (!arguments.Local)
         {
-            var account = await AzCli.RunJsonAsync(AzCommands.AccountShow(), cancellationToken);
-            subscriptionId = account.GetProperty("id").GetString();
-            azVersion      = await AzCli.RunJsonAsync(AzCommands.Version(), cancellationToken);
+            azVersion = await AzCli.RunJsonAsync(AzCommands.Version(), cancellationToken);
 
             foreach (var variant in arguments.Variants)
             {
@@ -367,7 +378,6 @@ internal static class SampleCommand
             arguments.Samples,
             arguments.SampleTimeout.TotalSeconds,
             ReplicaPollInterval.TotalSeconds,
-            subscriptionId,
             arguments.Local ? null : arguments.ResourceGroup,
             SdkVersion,
             RuntimeInformation.FrameworkDescription,
@@ -387,7 +397,6 @@ internal static class SampleCommand
 
         Console.WriteLine();
         Console.WriteLine("Once, before the first sample:");
-        PrintCommand(AzCommands.AccountShow());
         PrintCommand(AzCommands.Version());
         foreach (var variant in arguments.Variants)
         {

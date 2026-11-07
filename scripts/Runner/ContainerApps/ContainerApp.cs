@@ -3,7 +3,7 @@ namespace Runner.ContainerApps;
 // One variant's Container App, read through az. Nothing here changes the app.
 internal sealed class ContainerApp
 {
-    private const string RegistryHostSuffix = ".azurecr.io";
+    public const string RegistryHostSuffix = ".azurecr.io";
 
     private readonly Dictionary<string, string>  _imageByRevision = [];
     private readonly Dictionary<string, string?> _digestByImage   = [];
@@ -73,7 +73,7 @@ internal sealed class ContainerApp
             variant,
             Name,
             properties.TryGetProperty("latestRevisionName", out var revision) ? revision.GetString() : null,
-            properties.TryGetProperty("template", out var template) ? template : null);
+            properties.TryGetProperty("template", out var template) ? PublicNames.Template(template) : null);
     }
 
     // The image the revision runs, as a tag. Revisions don't carry the digest, so that comes from the registry.
