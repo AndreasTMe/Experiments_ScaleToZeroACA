@@ -1,4 +1,5 @@
 global using Azure.Messaging.ServiceBus;
+global using Runner.Analysis;
 global using Runner.Commands;
 global using Runner.ContainerApps;
 global using Runner.Logs;
