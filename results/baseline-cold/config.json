@@ -1,0 +1,293 @@
+{
+  "run": "baseline-cold",
+  "started": "2026-11-07T18:40:21.023872+00:00",
+  "mode": "azure",
+  "kind": "cold",
+  "variants": [
+    "jit",
+    "r2r",
+    "aot",
+    "jit-chiseled"
+  ],
+  "samples": 30,
+  "sampleTimeoutSeconds": 600,
+  "replicaPollSeconds": 10,
+  "resourceGroup": "rg-stz-uksouth",
+  "runnerSdkVersion": "7.21.0\u002B4e4c19469fe598b9f28a73d065514106985e7560",
+  "runnerRuntime": ".NET 10.0.14",
+  "runnerOs": "Microsoft Windows 10.0.19045",
+  "azVersion": {
+    "azure-cli": "2.91.0",
+    "azure-cli-core": "2.91.0",
+    "azure-cli-telemetry": "1.1.0",
+    "extensions": {
+      "log-analytics": "1.0.0b3"
+    }
+  },
+  "apps": [
+    {
+      "variant": "jit",
+      "name": "ca-stz-jit",
+      "latestRevisionName": "ca-stz-jit--1o7oncf",
+      "template": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "SERVICEBUS_CONNECTION_STRING",
+                "secretRef": "servicebus-connection"
+              },
+              {
+                "name": "WORKER_VARIANT",
+                "value": "jit"
+              },
+              {
+                "name": "WORKER_QUEUE",
+                "value": "jit"
+              },
+              {
+                "name": "WORKER_DONE_QUEUE",
+                "value": "done"
+              }
+            ],
+            "image": "redacted.azurecr.io/scale-to-zero-worker:jit-v1",
+            "name": "worker",
+            "resources": {
+              "cpu": 0.25,
+              "ephemeralStorage": "1Gi",
+              "memory": "0.5Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": "",
+        "scale": {
+          "cooldownPeriod": 300,
+          "maxReplicas": 1,
+          "minReplicas": 0,
+          "pollingInterval": 30,
+          "rules": [
+            {
+              "custom": {
+                "auth": [
+                  {
+                    "secretRef": "scaler-connection",
+                    "triggerParameter": "connection"
+                  }
+                ],
+                "metadata": {
+                  "messageCount": "1",
+                  "namespace": "redacted",
+                  "queueName": "jit"
+                },
+                "type": "azure-servicebus"
+              },
+              "name": "servicebus-queue"
+            }
+          ]
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      }
+    },
+    {
+      "variant": "r2r",
+      "name": "ca-stz-r2r",
+      "latestRevisionName": "ca-stz-r2r--ifffd1i",
+      "template": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "SERVICEBUS_CONNECTION_STRING",
+                "secretRef": "servicebus-connection"
+              },
+              {
+                "name": "WORKER_VARIANT",
+                "value": "r2r"
+              },
+              {
+                "name": "WORKER_QUEUE",
+                "value": "r2r"
+              },
+              {
+                "name": "WORKER_DONE_QUEUE",
+                "value": "done"
+              }
+            ],
+            "image": "redacted.azurecr.io/scale-to-zero-worker:r2r-v1",
+            "name": "worker",
+            "resources": {
+              "cpu": 0.25,
+              "ephemeralStorage": "1Gi",
+              "memory": "0.5Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": "",
+        "scale": {
+          "cooldownPeriod": 300,
+          "maxReplicas": 1,
+          "minReplicas": 0,
+          "pollingInterval": 30,
+          "rules": [
+            {
+              "custom": {
+                "auth": [
+                  {
+                    "secretRef": "scaler-connection",
+                    "triggerParameter": "connection"
+                  }
+                ],
+                "metadata": {
+                  "messageCount": "1",
+                  "namespace": "redacted",
+                  "queueName": "r2r"
+                },
+                "type": "azure-servicebus"
+              },
+              "name": "servicebus-queue"
+            }
+          ]
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      }
+    },
+    {
+      "variant": "aot",
+      "name": "ca-stz-aot",
+      "latestRevisionName": "ca-stz-aot--pjo5on9",
+      "template": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "SERVICEBUS_CONNECTION_STRING",
+                "secretRef": "servicebus-connection"
+              },
+              {
+                "name": "WORKER_VARIANT",
+                "value": "aot"
+              },
+              {
+                "name": "WORKER_QUEUE",
+                "value": "aot"
+              },
+              {
+                "name": "WORKER_DONE_QUEUE",
+                "value": "done"
+              }
+            ],
+            "image": "redacted.azurecr.io/scale-to-zero-worker:aot-v1",
+            "name": "worker",
+            "resources": {
+              "cpu": 0.25,
+              "ephemeralStorage": "1Gi",
+              "memory": "0.5Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": "",
+        "scale": {
+          "cooldownPeriod": 300,
+          "maxReplicas": 1,
+          "minReplicas": 0,
+          "pollingInterval": 30,
+          "rules": [
+            {
+              "custom": {
+                "auth": [
+                  {
+                    "secretRef": "scaler-connection",
+                    "triggerParameter": "connection"
+                  }
+                ],
+                "metadata": {
+                  "messageCount": "1",
+                  "namespace": "redacted",
+                  "queueName": "aot"
+                },
+                "type": "azure-servicebus"
+              },
+              "name": "servicebus-queue"
+            }
+          ]
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      }
+    },
+    {
+      "variant": "jit-chiseled",
+      "name": "ca-stz-jit-chiseled",
+      "latestRevisionName": "ca-stz-jit-chiseled--lus4kr5",
+      "template": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "SERVICEBUS_CONNECTION_STRING",
+                "secretRef": "servicebus-connection"
+              },
+              {
+                "name": "WORKER_VARIANT",
+                "value": "jit-chiseled"
+              },
+              {
+                "name": "WORKER_QUEUE",
+                "value": "jit-chiseled"
+              },
+              {
+                "name": "WORKER_DONE_QUEUE",
+                "value": "done"
+              }
+            ],
+            "image": "redacted.azurecr.io/scale-to-zero-worker:jit-chiseled-v1",
+            "name": "worker",
+            "resources": {
+              "cpu": 0.25,
+              "ephemeralStorage": "1Gi",
+              "memory": "0.5Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": "",
+        "scale": {
+          "cooldownPeriod": 300,
+          "maxReplicas": 1,
+          "minReplicas": 0,
+          "pollingInterval": 30,
+          "rules": [
+            {
+              "custom": {
+                "auth": [
+                  {
+                    "secretRef": "scaler-connection",
+                    "triggerParameter": "connection"
+                  }
+                ],
+                "metadata": {
+                  "messageCount": "1",
+                  "namespace": "redacted",
+                  "queueName": "jit-chiseled"
+                },
+                "type": "azure-servicebus"
+              },
+              "name": "servicebus-queue"
+            }
+          ]
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      }
+    }
+  ]
+}
