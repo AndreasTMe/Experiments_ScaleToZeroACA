@@ -168,7 +168,7 @@ internal static class PhasesCommand
             return null;
         }
 
-        var workspace = await AzCli.RunJsonAsync(
+        var workspace = await AzCli.RunJsonWithRetriesAsync(
             AzCommands.WorkspaceShow(arguments.ResourceGroup, arguments.WorkspaceName),
             cancellationToken);
 
@@ -179,7 +179,7 @@ internal static class PhasesCommand
             return null;
         }
 
-        var rows = await AzCli.RunJsonAsync(AzCommands.LogAnalyticsQuery(guid, query), cancellationToken);
+        var rows = await AzCli.RunJsonWithRetriesAsync(AzCommands.LogAnalyticsQuery(guid, query), cancellationToken);
         if (rows.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidOperationException("The query result isn't a list of rows.");

@@ -1,7 +1,8 @@
 namespace Runner.Logs;
 
-// One row of ContainerAppSystemLogs_CL. Time comes from time_s, the event's own time to the nanosecond, and not from
-// TimeGenerated, which is the ingestion batch and puts some events out of order.
+// One row of ContainerAppSystemLogs_CL. Time is the event's own time, from time_s to the nanosecond or, on the many
+// rows where that's empty, from time_t to 100 ns. TimeGenerated isn't used: it's the ingestion batch, shared by
+// events seconds apart, and puts some of them out of order.
 internal sealed record SystemLogEvent(
     DateTimeOffset Time,
     string? App,
@@ -20,14 +21,14 @@ internal sealed record SystemLogEvent(
 
         foreach (var row in rows.EnumerateArray())
         {
-            if (Column(row, "time_s") is not { } time)
+            if ((TryParseTime(Column(row, "time_s")) ?? TryParseTime(Column(row, "time_t"))) is not { } time)
             {
                 continue;
             }
 
             events.Add(
                 new SystemLogEvent(
-                    ParseTime(time),
+                    time,
                     Column(row, "ContainerAppName_s"),
                     Column(row, "RevisionName_s"),
                     Column(row, "ReplicaName_s"),
@@ -60,6 +61,19 @@ internal sealed record SystemLogEvent(
             value,
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+    }
+
+    // An empty time_t comes back as "None", which isn't a time.
+    private static DateTimeOffset? TryParseTime(string? value)
+    {
+        try
+        {
+            return value is null ? null : ParseTime(value);
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
     }
 
     private static string? Column(JsonElement row, string name) =>

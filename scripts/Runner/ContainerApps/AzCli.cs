@@ -4,6 +4,13 @@ namespace Runner.ContainerApps;
 // JMESPath queries: on Windows az is a batch file run through cmd, which would reinterpret characters in a query.
 internal static class AzCli
 {
+    // About two and a half minutes in all: enough to ride out a brief failure of the Azure API, such as a 500, which
+    // would otherwise stop a run that takes hours.
+    private static readonly TimeSpan[] RetryDelays =
+    [
+        TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(40), TimeSpan.FromSeconds(80)
+    ];
+
     public static string Format(IReadOnlyList<string> arguments) => "az " + string.Join(' ', arguments);
 
     public static async Task<JsonElement> RunJsonAsync(
@@ -13,6 +20,29 @@ internal static class AzCli
         var       output   = await RunAsync(arguments, cancellationToken);
         using var document = JsonDocument.Parse(output);
         return document.RootElement.Clone();
+    }
+
+    // For commands that only read, so running one again is harmless. A failure is retried after each delay in turn,
+    // and thrown once they've run out.
+    public static async Task<JsonElement> RunJsonWithRetriesAsync(
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 0;; attempt++)
+        {
+            try
+            {
+                return await RunJsonAsync(arguments, cancellationToken);
+            }
+            catch (InvalidOperationException exception) when (attempt < RetryDelays.Length)
+            {
+                var delay = RetryDelays[attempt];
+                Console.Error.WriteLine(
+                    $"{exception.Message} Retrying in {delay.TotalSeconds:F0} s "
+                    + $"({attempt + 1} of {RetryDelays.Length} retries).");
+                await Task.Delay(delay, cancellationToken);
+            }
+        }
     }
 
     public static async Task<string> RunAsync(IReadOnlyList<string> arguments, CancellationToken cancellationToken)

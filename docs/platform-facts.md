@@ -204,6 +204,9 @@ Read from the workspace on 2026-11-07, one cold sample per app:
 - **Event time is `time_s`.** It's RFC 3339 with nanoseconds. `_timestamp_d` is the same instant as Unix seconds, to
   about 10 µs. `TimeStamp_s` is whole seconds. `TimeGenerated` is the ingestion batch: several apps share one value,
   and it puts the pull after the container start, so it isn't used.
+- **`time_s` is often empty.** In the first 30-sample cold run it was empty on most rows, for every reason and app,
+  though no row was missing. Those rows have the time in `time_t` instead, a datetime to 100 ns, which az prints as
+  `None` when it's empty. The runner reads `time_s` and falls back to `time_t`.
 - **Reasons on a replica**, in order: `AssigningReplica`, `ContainerCreated` and `ContainerStarted` twice,
   `PullingImage`, `ImagePulled` (the pull time and image size in the message), `ContainerCreated`,
   `ContainerStarted`, and `StoppingContainer` at scale-in. The created and started events don't name the container,
