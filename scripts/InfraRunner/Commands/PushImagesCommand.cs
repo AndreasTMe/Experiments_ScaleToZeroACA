@@ -75,9 +75,18 @@ internal static class PushImagesCommand
 
         if (arguments.ForcedPulls > 0)
         {
+            var existingTags = await ReadTagsAsync(runner, registryName);
+
             foreach (var variant in arguments.Variants)
             {
-                await PushForcedPullCopiesAsync(runner, arguments, variant, registryName, loginServer, pushed);
+                await PushForcedPullCopiesAsync(
+                    runner,
+                    arguments,
+                    variant,
+                    registryName,
+                    loginServer,
+                    existingTags,
+                    pushed);
             }
         }
 
@@ -95,13 +104,39 @@ internal static class PushImagesCommand
         }
     }
 
+    // The tags in the repository now. A copy whose push was stopped has no tag, since the tag is written last.
+    private static async Task<HashSet<string>> ReadTagsAsync(ToolRunner runner, string registryName)
+    {
+        var tags = await runner.CaptureJsonAsync(
+            "az",
+            [
+                "acr", "repository", "show-tags",
+                "--name", registryName,
+                "--repository", InfraNames.Repository,
+                "-o", "json"
+            ],
+            "[]");
+
+        // Without --detail az prints the names; the detailed form has objects with a name, so both are read.
+        return tags.EnumerateArray()
+            .Select(tag => tag.ValueKind == JsonValueKind.String
+                ? tag.GetString()
+                : tag.TryGetProperty("name", out var name)
+                    ? name.GetString()
+                    : null)
+            .OfType<string>()
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
     // Builds, pushes and removes each copy in turn, so only one copy is on disk at a time apart from the build cache.
+    // A copy already in the registry is skipped, so a stopped push can be run again and carries on.
     private static async Task PushForcedPullCopiesAsync(
         ToolRunner runner,
         PushImagesArguments arguments,
         string variant,
         string registryName,
         string loginServer,
+        HashSet<string> existingTags,
         List<(string Variant, string Image, string Digest)> pushed)
     {
         var source = $"{InfraNames.Repository}:{variant}";
@@ -123,6 +158,12 @@ internal static class PushImagesCommand
             var tag     = InfraNames.ForcedPullTag(variant, arguments.ImageTag, copy);
             var remote  = $"{loginServer}/{InfraNames.Repository}:{tag}";
             var context = Path.Combine(Path.GetTempPath(), $"stz-forced-pull-{Guid.NewGuid():N}");
+
+            if (existingTags.Contains(tag))
+            {
+                Console.WriteLine($"{remote} is already in the registry, skipping it.");
+                continue;
+            }
 
             try
             {
