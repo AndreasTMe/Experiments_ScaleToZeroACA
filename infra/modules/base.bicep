@@ -98,20 +98,22 @@ resource environment 'Microsoft.App/managedEnvironments@2026-07-01' = {
   name: names.environment
   location: location
   tags: tags
-  properties: {
-    environmentMode: 'ConsumptionOnly'
-    appLogsConfiguration: enableLogAnalytics
+  // Without Log Analytics, appLogsConfiguration is left out. The reference lists 'none' as a destination, but the
+  // 2026-07-01 API rejects it and asks for no destination at all.
+  properties: union(
+    { environmentMode: 'ConsumptionOnly' },
+    enableLogAnalytics
       ? {
-          destination: 'log-analytics'
-          logAnalyticsConfiguration: {
-            customerId: workspace!.properties.customerId
-            sharedKey: workspace!.listKeys().primarySharedKey
+          appLogsConfiguration: {
+            destination: 'log-analytics'
+            logAnalyticsConfiguration: {
+              customerId: workspace!.properties.customerId
+              sharedKey: workspace!.listKeys().primarySharedKey
+            }
           }
         }
-      : {
-          destination: 'none'
-        }
-  }
+      : {}
+  )
 }
 
 output registryName string = registry.name

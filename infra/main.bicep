@@ -10,7 +10,7 @@ param location string = 'uksouth'
 @maxLength(8)
 param namePrefix string = 'stz'
 
-@description('Email address that receives the budget alerts. Passed on the command line, not stored in the repo.')
+@description('Email address that receives the budget alerts. Read from STZ_BUDGET_EMAIL, not stored in the repo.')
 @minLength(3)
 param budgetEmail string
 
