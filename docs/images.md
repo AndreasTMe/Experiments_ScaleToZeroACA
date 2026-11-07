@@ -67,6 +67,19 @@ The base image defaults were left alone, so these come with each variant:
 - The plain `runtime` image runs as root unless told otherwise. The Dockerfile sets `USER $APP_UID` in every variant,
   so all four run as UID 1654.
 
+## Forced-pull copies
+
+Every pull in the baseline took about 100 ms, even the first sample's, so the nodes already had the layers. A new tag
+on the same digest wouldn't change that. `push-images --forced-pulls <n>` also pushes `n` copies of each variant as
+`<variant>-<tag>-pull-01` and up. Each copy is built `FROM scratch` with `COPY --from` of the whole image plus a
+random `pull-nonce` file, so all its files are in one layer no node has seen. The config the container runs with (`Env`,
+`WorkingDir`, `User`, `Entrypoint`, `Cmd`) is written out again; labels aren't.
+
+Checked locally on all four variants: the copies have the same `Env`, `User`, `WorkingDir` and `Entrypoint` as the
+image, the same owner and mode on every file, and each started its worker. A copy is one layer plus the empty layer
+`WORKDIR` adds, about the compressed size of its image: about 220 MiB for one copy of all four, so about 6.6 GiB
+for 30.
+
 ## Verified
 
 - All four built with `docker build --no-cache`, with no warnings, including no trim or AOT warnings for `aot`.
