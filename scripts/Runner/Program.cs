@@ -21,6 +21,17 @@ switch (args)
 
         return await SampleCommand.RunAsync(sample);
 
+    case ["analyze", ..]:
+        var analyze = AnalyzeArguments.Parse(args, out var analyzeError);
+        if (analyze is null)
+        {
+            Console.Error.WriteLine(analyzeError);
+            PrintUsage();
+            return 2;
+        }
+
+        return await AnalyzeCommand.RunAsync(analyze);
+
     case ["phases", ..]:
         var phases = PhasesArguments.Parse(args, out var phasesError);
         if (phases is null)
@@ -42,5 +53,6 @@ static void PrintUsage()
     Console.Error.WriteLine("Usage: send --local --variant <names>");
     Console.Error.WriteLine($"       {SampleArguments.Usage}");
     Console.Error.WriteLine($"       {PhasesArguments.Usage}");
+    Console.Error.WriteLine($"       {AnalyzeArguments.Usage}");
     Console.Error.WriteLine("Names are comma-separated, from jit, r2r, aot and jit-chiseled.");
 }
