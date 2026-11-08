@@ -4,6 +4,8 @@
 @export()
 type ResourceNames = {
   pullIdentity: string
+  workerIdentity: string
+  scalerIdentity: string
   registry: string
   serviceBusNamespace: string
   workspace: string
@@ -13,6 +15,8 @@ type ResourceNames = {
 @export()
 func resourceNames(namePrefix string, resourceGroupId string) ResourceNames => {
   pullIdentity: 'id-${namePrefix}-pull'
+  workerIdentity: 'id-${namePrefix}-worker'
+  scalerIdentity: 'id-${namePrefix}-scaler'
   registry: 'acr${namePrefix}${uniqueString(resourceGroupId)}'
   serviceBusNamespace: 'sb-${namePrefix}-${uniqueString(resourceGroupId)}'
   workspace: 'log-${namePrefix}'

@@ -80,7 +80,9 @@ internal sealed class QueueProcessor : IHostedService, IAsyncDisposable
             _timeline.HostStarted,
             _timeline.DoneSenderOpened,
             _timeline.ProcessorStarted,
-            received);
+            received,
+            _timeline.FirstTokenRequested,
+            _timeline.FirstTokenAcquired);
 
         var body = JsonSerializer.SerializeToUtf8Bytes(done, WorkerJsonContext.Default.DoneMessage);
 

@@ -33,7 +33,11 @@ var variants = [
   'r2r'
   'aot'
   'jit-chiseled'
+  'jit-identity'
 ]
+
+// The one variant that signs in to Service Bus with a managed identity, and scales with one, instead of SAS.
+var identityVariant = 'jit-identity'
 
 var doneQueueName = 'done'
 
@@ -49,6 +53,14 @@ var scaleOverrides = union(
 
 resource pullIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = {
   name: names.pullIdentity
+}
+
+resource workerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = {
+  name: names.workerIdentity
+}
+
+resource scalerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30' existing = {
+  name: names.scalerIdentity
 }
 
 resource registry 'Microsoft.ContainerRegistry/registries@2025-11-01' existing = {
@@ -96,31 +108,50 @@ resource apps 'Microsoft.App/containerApps@2026-07-01' = [
     tags: union(tags, { variant: variant })
     identity: {
       type: 'UserAssigned'
-      userAssignedIdentities: {
-        '${pullIdentity.id}': {}
-      }
+      userAssignedIdentities: union(
+        { '${pullIdentity.id}': {} },
+        variant == identityVariant ? { '${workerIdentity.id}': {}, '${scalerIdentity.id}': {} } : {}
+      )
     }
     properties: {
       environmentId: environment.id
-      configuration: {
-        activeRevisionsMode: 'Single'
-        registries: [
-          {
-            server: registry.properties.loginServer
-            identity: pullIdentity.id
-          }
-        ]
-        secrets: [
-          {
-            name: 'servicebus-connection'
-            value: workerRule.listKeys().primaryConnectionString
-          }
-          {
-            name: 'scaler-connection'
-            value: scalerRule.listKeys().primaryConnectionString
-          }
-        ]
-      }
+      configuration: union(
+        {
+          activeRevisionsMode: 'Single'
+          registries: [
+            {
+              server: registry.properties.loginServer
+              identity: pullIdentity.id
+            }
+          ]
+        },
+        variant == identityVariant
+          ? {
+              // The scale rule's identity is used by the platform only, so the worker's code can't get its tokens.
+              identitySettings: [
+                {
+                  identity: workerIdentity.id
+                  lifecycle: 'Main'
+                }
+                {
+                  identity: scalerIdentity.id
+                  lifecycle: 'None'
+                }
+              ]
+            }
+          : {
+              secrets: [
+                {
+                  name: 'servicebus-connection'
+                  value: workerRule.listKeys().primaryConnectionString
+                }
+                {
+                  name: 'scaler-connection'
+                  value: scalerRule.listKeys().primaryConnectionString
+                }
+              ]
+            }
+      )
       template: {
         containers: [
           {
@@ -130,24 +161,41 @@ resource apps 'Microsoft.App/containerApps@2026-07-01' = [
               cpu: json('0.25')
               memory: '0.5Gi'
             }
-            env: [
-              {
-                name: 'SERVICEBUS_CONNECTION_STRING'
-                secretRef: 'servicebus-connection'
-              }
-              {
-                name: 'WORKER_VARIANT'
-                value: variant
-              }
-              {
-                name: 'WORKER_QUEUE'
-                value: variant
-              }
-              {
-                name: 'WORKER_DONE_QUEUE'
-                value: doneQueueName
-              }
-            ]
+            env: concat(
+              variant == identityVariant
+                ? [
+                    {
+                      // The public cloud's suffix. The namespace's serviceBusEndpoint is a URL with a port, which
+                      // the client doesn't take.
+                      name: 'SERVICEBUS_NAMESPACE'
+                      value: '${namespace.name}.servicebus.windows.net'
+                    }
+                    {
+                      name: 'AZURE_CLIENT_ID'
+                      value: workerIdentity.properties.clientId
+                    }
+                  ]
+                : [
+                    {
+                      name: 'SERVICEBUS_CONNECTION_STRING'
+                      secretRef: 'servicebus-connection'
+                    }
+                  ],
+              [
+                {
+                  name: 'WORKER_VARIANT'
+                  value: variant
+                }
+                {
+                  name: 'WORKER_QUEUE'
+                  value: variant
+                }
+                {
+                  name: 'WORKER_DONE_QUEUE'
+                  value: doneQueueName
+                }
+              ]
+            )
           }
         ]
         scale: union(
@@ -157,20 +205,27 @@ resource apps 'Microsoft.App/containerApps@2026-07-01' = [
             rules: [
               {
                 name: 'servicebus-queue'
-                custom: {
-                  type: 'azure-servicebus'
-                  metadata: {
-                    namespace: namespace.name
-                    queueName: variant
-                    messageCount: '1'
-                  }
-                  auth: [
-                    {
-                      secretRef: 'scaler-connection'
-                      triggerParameter: 'connection'
+                // A rule takes identity instead of auth, with the resource ID of an identity the app has.
+                custom: union(
+                  {
+                    type: 'azure-servicebus'
+                    metadata: {
+                      namespace: namespace.name
+                      queueName: variant
+                      messageCount: '1'
                     }
-                  ]
-                }
+                  },
+                  variant == identityVariant
+                    ? { identity: scalerIdentity.id }
+                    : {
+                        auth: [
+                          {
+                            secretRef: 'scaler-connection'
+                            triggerParameter: 'connection'
+                          }
+                        ]
+                      }
+                )
               }
             ]
           },

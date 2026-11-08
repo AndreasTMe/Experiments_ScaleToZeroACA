@@ -2,7 +2,9 @@ namespace Runner.Commands;
 
 // Takes samples for each variant in parallel, one loop per variant, and appends each one to results/<run>/samples.csv
 // as it finishes. A cold sample waits until the app has no replicas; a warm one is sent while a replica is running.
-// In local mode the workers always run, so there is nothing to wait for and no az command runs.
+// In local mode the workers always run, so there is nothing to wait for and no az command runs. With --forced-pull,
+// each cold sample first gives the app its own one-layer copy of the image, so the replica has to pull all of it, and
+// the app gets its image back at the end.
 internal static class SampleCommand
 {
     private sealed record VariantOutcome(string Variant, int Ok, int Failed, string? Error);
@@ -12,6 +14,9 @@ internal static class SampleCommand
     // Scale-in comes after the cooldown (300 s by default), so this is several cooldowns. Longer means something is
     // keeping the app up, such as min replicas above 0, and the variant's loop stops.
     private static readonly TimeSpan ZeroWaitLimit = TimeSpan.FromMinutes(30);
+
+    // A new revision is usually ready within a minute or two. Longer means it can't start, such as a missing image.
+    private static readonly TimeSpan RevisionReadyLimit = TimeSpan.FromMinutes(10);
 
     private static readonly string SdkVersion =
         typeof(ServiceBusClient).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
@@ -92,6 +97,9 @@ internal static class SampleCommand
 
         // Read before creating the directory, so a run that can't reach Azure leaves nothing behind.
         var config = await DescribeRunAsync(arguments, runName, started, kind, apps, cancellationToken);
+        var originalImages = arguments.ForcedPullTag is null
+            ? []
+            : await ReadOriginalImagesAsync(arguments, apps, cancellationToken);
 
         Directory.CreateDirectory(runDirectory);
         await File.WriteAllTextAsync(
@@ -113,6 +121,7 @@ internal static class SampleCommand
                 variant,
                 kind,
                 apps.GetValueOrDefault(variant),
+                originalImages.GetValueOrDefault(variant),
                 client,
                 dispatcher,
                 csv,
@@ -135,6 +144,7 @@ internal static class SampleCommand
         string variant,
         string kind,
         ContainerApp? app,
+        string? originalImage,
         ServiceBusClient client,
         DoneDispatcher dispatcher,
         SamplesCsv csv,
@@ -151,6 +161,13 @@ internal static class SampleCommand
             for (var sample = 1; sample <= arguments.Samples; sample++)
             {
                 DateTimeOffset? zeroObserved = null;
+
+                if (app is not null && originalImage is not null)
+                {
+                    var image = ForcedPullImage(originalImage, arguments.ForcedPullImageTag(variant, sample));
+                    Console.WriteLine($"{variant}: setting the image to {PublicNames.Image(image)}.");
+                    await app.SetImageAsync(image, ReplicaPollInterval, RevisionReadyLimit, cancellationToken);
+                }
 
                 if (app is not null && !arguments.Warm)
                 {
@@ -202,7 +219,85 @@ internal static class SampleCommand
             Console.Error.WriteLine($"{variant}: {exception.Message}");
             return new VariantOutcome(variant, ok, failed, exception.Message);
         }
+        finally
+        {
+            if (app is not null && originalImage is not null)
+            {
+                await RestoreImageAsync(variant, app, originalImage);
+            }
+        }
     }
+
+    // The image each app runs before the run, checked to be a tagged registry image that isn't a copy, with the
+    // first and last copies the run needs already in the registry.
+    private static async Task<Dictionary<string, string>> ReadOriginalImagesAsync(
+        SampleArguments arguments,
+        Dictionary<string, ContainerApp> apps,
+        CancellationToken cancellationToken)
+    {
+        var images = new Dictionary<string, string>();
+
+        foreach (var variant in arguments.Variants)
+        {
+            var app   = apps[variant];
+            var image = await app.GetTemplateImageAsync(cancellationToken);
+            var split = ContainerApp.SplitRegistryImage(image);
+
+            if (split is null || !split.Value.RepositoryAndTag.Contains(':'))
+            {
+                throw new InvalidOperationException(
+                    $"{app.Name} runs {PublicNames.Image(image)}, which isn't a tagged image in a registry.");
+            }
+
+            if (split.Value.RepositoryAndTag.Contains("-pull-", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"{app.Name} still runs the forced-pull copy {PublicNames.Image(image)}. Deploy the apps again "
+                    + "to set its image back first.");
+            }
+
+            foreach (var sample in (int[])[1, arguments.Samples])
+            {
+                var copy = ForcedPullImage(image, arguments.ForcedPullImageTag(variant, sample));
+
+                try
+                {
+                    await app.GetDigestAsync(copy, cancellationToken);
+                }
+                catch (InvalidOperationException)
+                {
+                    throw new InvalidOperationException(
+                        $"The registry has no {PublicNames.Image(copy)}. Push the copies first, with push-images "
+                        + $"--image-tag {arguments.ForcedPullTag} --forced-pulls {arguments.Samples}.");
+                }
+            }
+
+            images[variant] = image;
+        }
+
+        return images;
+    }
+
+    // Runs even when the run is stopped, so it doesn't take the run's cancellation token.
+    private static async Task RestoreImageAsync(string variant, ContainerApp app, string originalImage)
+    {
+        Console.WriteLine($"{variant}: setting the image back to {PublicNames.Image(originalImage)}.");
+
+        try
+        {
+            await app.SetImageAsync(originalImage, ReplicaPollInterval, RevisionReadyLimit, CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException
+                                              or TimeoutException
+                                              or JsonException)
+        {
+            Console.Error.WriteLine(
+                $"{variant}: couldn't set the image back ({exception.Message}). Deploy the apps again to restore it.");
+        }
+    }
+
+    // "registry/repository:tag" with the tag replaced.
+    private static string ForcedPullImage(string image, string tag) => $"{image[..image.LastIndexOf(':')]}:{tag}";
 
     private static async Task<SampleRow> TakeSampleAsync(
         string variant,
@@ -376,6 +471,7 @@ internal static class SampleCommand
             kind,
             arguments.Variants,
             arguments.Samples,
+            arguments.ForcedPullTag,
             arguments.SampleTimeout.TotalSeconds,
             ReplicaPollInterval.TotalSeconds,
             arguments.Local ? null : arguments.ResourceGroup,
@@ -403,6 +499,40 @@ internal static class SampleCommand
             PrintCommand(AzCommands.AppShow(arguments.AppName(variant), arguments.ResourceGroup));
         }
 
+        if (arguments.ForcedPullTag is { } tag)
+        {
+            Console.WriteLine();
+            Console.WriteLine(
+                "Once, before the first sample, each app's image is read and its first and last copies are looked "
+                + "up in the registry:");
+            foreach (var variant in arguments.Variants)
+            {
+                PrintCommand(AzCommands.AppShow(arguments.AppName(variant), arguments.ResourceGroup));
+                PrintCommand(
+                    AzCommands.RepositoryShow(
+                        "<registry from the image>",
+                        $"<repository>:{arguments.ForcedPullImageTag(variant, 1)}"));
+                PrintCommand(
+                    AzCommands.RepositoryShow(
+                        "<registry from the image>",
+                        $"<repository>:{arguments.ForcedPullImageTag(variant, arguments.Samples)}"));
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(
+                $"Before each sample <nn>, the image is set to its copy, then the app is read every "
+                + $"{ReplicaPollInterval.TotalSeconds:F0} s until latestReadyRevisionName equals latestRevisionName:");
+            foreach (var variant in arguments.Variants)
+            {
+                PrintCommand(
+                    AzCommands.AppUpdateImage(
+                        arguments.AppName(variant),
+                        arguments.ResourceGroup,
+                        $"<registry>/<repository>:{variant}-{tag}-pull-<nn>"));
+                PrintCommand(AzCommands.AppShow(arguments.AppName(variant), arguments.ResourceGroup));
+            }
+        }
+
         Console.WriteLine();
         Console.WriteLine(
             arguments.Warm
@@ -428,6 +558,20 @@ internal static class SampleCommand
         }
 
         PrintCommand(AzCommands.RepositoryShow("<registry from the image>", "<repository:tag from the revision>"));
+
+        if (arguments.ForcedPullTag is not null)
+        {
+            Console.WriteLine();
+            Console.WriteLine("After the last sample, or when the run stops, each app gets its image back:");
+            foreach (var variant in arguments.Variants)
+            {
+                PrintCommand(
+                    AzCommands.AppUpdateImage(
+                        arguments.AppName(variant),
+                        arguments.ResourceGroup,
+                        "<the image it had before the run>"));
+            }
+        }
     }
 
     private static void PrintCommand(string[] arguments) => Console.WriteLine($"  {AzCli.Format(arguments)}");

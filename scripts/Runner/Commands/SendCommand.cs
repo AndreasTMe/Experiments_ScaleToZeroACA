@@ -78,6 +78,14 @@ internal static class SendCommand
         Console.WriteLine($"Process started   {done.ProcessStarted:O}");
         Console.WriteLine($"Main entered      {done.MainEntered:O}");
         Console.WriteLine($"Host started      {done.HostStarted:O}");
+
+        // Only the managed identity build sends these.
+        if (done.FirstTokenRequested is { } requested && done.FirstTokenAcquired is { } acquired)
+        {
+            Console.WriteLine($"Token requested   {requested:O}");
+            Console.WriteLine($"Token acquired    {acquired:O}");
+        }
+
         Console.WriteLine($"Done sender open  {done.DoneSenderOpened:O}");
         Console.WriteLine($"Processor started {done.ProcessorStarted:O}");
         Console.WriteLine($"Message received  {done.MessageReceived:O}");

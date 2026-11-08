@@ -91,6 +91,38 @@ internal static partial class PhaseMatcher
             started?.Time);
     }
 
+    // The revision's first replica, if it was assigned before the trigger and isn't the sample's own. This only holds
+    // for a run where every sample has a revision of its own; in others an earlier sample's replica would be taken.
+    public static ActivationPull? MatchActivation(
+        DateTimeOffset triggerSent,
+        string? replica,
+        string? revision,
+        IReadOnlyList<SystemLogEvent> events)
+    {
+        if (revision is null)
+        {
+            return null;
+        }
+
+        var first = events
+            .Where(e => e.Revision == revision && e.Replica is not null && e.Reason == AssigningReplica)
+            .MinBy(e => e.Time);
+
+        if (first is null || first.Replica == replica || first.Time >= triggerSent - ClockTolerance)
+        {
+            return null;
+        }
+
+        var pulled = events
+            .Where(e => e.Replica == first.Replica && e.Reason == ImagePulled && e.Time >= first.Time)
+            .MinBy(e => e.Time);
+
+        return new ActivationPull(
+            first.Replica!,
+            pulled is null ? null : PullMilliseconds(pulled.Message),
+            pulled is null ? null : ImageBytes(pulled.Message));
+    }
+
     private static SystemLogEvent? First(List<SystemLogEvent> events, string reason, DateTimeOffset notBefore) =>
         events.FirstOrDefault(e => e.Reason == reason && e.Time >= notBefore);
 

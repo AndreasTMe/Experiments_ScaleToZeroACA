@@ -23,6 +23,7 @@ internal static class SummaryMarkdown
         EndToEnd(text, summary);
         Failures(text, summary);
         Phases(text, summary);
+        TokenPhases(text, summary);
         Pulls(text, summary);
 
         return text.ToString();
@@ -125,6 +126,45 @@ internal static class SummaryMarkdown
         }
     }
 
+    private static void TokenPhases(StringBuilder text, RunSummary summary)
+    {
+        var groups = summary.Groups.Where(group => group.TokenPhases.Count > 0).ToList();
+        if (groups.Count == 0)
+        {
+            return;
+        }
+
+        var names = groups[0].TokenPhases;
+
+        Line(text);
+        Line(text, "## Token medians");
+        Line(text);
+        Line(
+            text,
+            "serviceBusConnection split at the first token, for the variants that sign in with a managed identity. "
+            + "The three phases add up to serviceBusConnection.");
+        Line(text);
+        Row(text, ["Variant", .. names.Select(phase => phase.Name), "Samples"]);
+        Separator(text, names.Count + 2);
+
+        foreach (var group in groups)
+        {
+            Row(
+                text,
+                [
+                    group.Variant,
+                    .. group.TokenPhases.Select(phase => Number(phase.Duration?.MedianMs)),
+                    Number(group.TokenPhases.Min(phase => phase.Duration?.Count ?? 0))
+                ]);
+        }
+
+        Line(text);
+        foreach (var phase in names)
+        {
+            Line(text, $"- {phase.Name}: {phase.From} to {phase.To}");
+        }
+    }
+
     private static void Pulls(StringBuilder text, RunSummary summary)
     {
         if (summary.Groups.All(group => group.Pulls.Count == 0))
@@ -139,7 +179,9 @@ internal static class SummaryMarkdown
             text,
             "A first pull is a sample whose image or digest differs from the previous sample's. The first sample of a "
             + "run is unknown, since the node may have its image from an earlier run. The pull time is the one the "
-            + "ImagePulled event reports.");
+            + "ImagePulled event reports. In a forced-pull run each sample's revision started a replica while it "
+            + "activated, which pulled the copy in full before the sample's replica found it cached; the activation "
+            + "row is those full pulls, and its end-to-end median is the samples' with their pull swapped for it.");
         Line(text);
         Row(text, ["Variant", "Pull", "Samples", "Pull median", "Pull p90", "End-to-end median"]);
         Separator(text, 6);

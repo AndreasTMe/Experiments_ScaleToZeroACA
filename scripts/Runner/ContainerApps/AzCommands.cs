@@ -4,12 +4,26 @@ namespace Runner.ContainerApps;
 // Flags are checked against docs/platform-facts.md.
 internal static class AzCommands
 {
+    // The container's name in infra/apps.bicep.
+    private const string WorkerContainer = "worker";
+
     public static string[] Version() => ["version", "-o", "json"];
 
     public static string[] AppShow(string app, string resourceGroup) =>
         ["containerapp", "show", "--name", app, "--resource-group", resourceGroup, "-o", "json"];
 
     // Lists the replicas of the latest revision, which is the only one: the apps run in single revision mode.
+    // Sets the worker container's image, which makes a new revision.
+    public static string[] AppUpdateImage(string app, string resourceGroup, string image) =>
+    [
+        "containerapp", "update",
+        "--name", app,
+        "--resource-group", resourceGroup,
+        "--container-name", WorkerContainer,
+        "--image", image,
+        "-o", "json"
+    ];
+
     public static string[] ReplicaList(string app, string resourceGroup) =>
         ["containerapp", "replica", "list", "--name", app, "--resource-group", resourceGroup, "-o", "json"];
 

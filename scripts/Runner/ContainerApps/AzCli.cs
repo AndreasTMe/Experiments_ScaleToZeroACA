@@ -22,8 +22,8 @@ internal static class AzCli
         return document.RootElement.Clone();
     }
 
-    // For commands that only read, so running one again is harmless. A failure is retried after each delay in turn,
-    // and thrown once they've run out.
+    // For commands that are harmless to run again: reads, and setting an image the app may already have. A failure is
+    // retried after each delay in turn, and thrown once they've run out.
     public static async Task<JsonElement> RunJsonWithRetriesAsync(
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
