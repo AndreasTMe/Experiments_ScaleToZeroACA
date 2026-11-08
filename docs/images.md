@@ -76,6 +76,9 @@ the same digest wouldn't change that. `push-images --forced-pulls <n>` also push
 `WorkingDir`, `User`, `Entrypoint`, `Cmd`) is written out again; labels aren't. Copies whose tag is already in the
 registry are skipped, so a push that was stopped carries on when it's run again.
 
+The new revision's activation replica pulls the copy first, so the sample's replica finds it cached. The full pull is
+the activation replica's, which `phases` records for a forced-pull run (see `docs/platform-facts.md`).
+
 Checked locally on all four variants: the copies have the same `Env`, `User`, `WorkingDir` and `Entrypoint` as the
 image, the same owner and mode on every file, and each started its worker. A copy is one layer plus the empty layer
 `WORKDIR` adds, about the compressed size of its image: about 220 MiB for one copy of all four, so about 6.6 GiB

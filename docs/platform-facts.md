@@ -351,6 +351,10 @@ Notes:
 - In single revision mode a new revision is "provisioned, activated, and scaled", and "Activating" means zero running
   replicas with one being provisioned (revs). That replica may pull a forced-pull copy before the sample's trigger, so
   the sample's own pull could find it cached. The pull duration and size in the system logs show which happened.
+  On the forced-pull run it did: on two jit revisions the activation replica pulled the 85.9 MB copy in 2.1 s and
+  2.2 s, and the sample's replica then took 81 ms and 106 ms. So `phases` also records, for a forced-pull run, the
+  pull of the revision's first replica, if it was assigned before the trigger, as `activationReplica`,
+  `activationPullMs` and `activationImageBytes`, and `analyze` reports those pulls in a row of their own.
 - Whether `az resource delete` can remove a budget isn't covered by any page read; `az consumption budget delete` is
   the documented way.
 
