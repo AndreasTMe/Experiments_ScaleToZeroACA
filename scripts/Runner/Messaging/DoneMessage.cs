@@ -13,5 +13,5 @@ internal sealed record DoneMessage(
     DateTimeOffset DoneSenderOpened,
     DateTimeOffset ProcessorStarted,
     DateTimeOffset MessageReceived,
-    DateTimeOffset? FirstTokenRequested,
-    DateTimeOffset? FirstTokenAcquired);
+    DateTimeOffset? FirstTokenRequested = null,
+    DateTimeOffset? FirstTokenAcquired = null);
