@@ -103,26 +103,15 @@ resource scalerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-1
   tags: tags
 }
 
-resource identityQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' existing = {
-  parent: namespace
-  name: identityQueueName
-  dependsOn: [
-    queues
-  ]
-}
-
-resource doneQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' existing = {
-  parent: namespace
-  name: doneQueueName
-  dependsOn: [
-    queues
-  ]
-}
+// The queues are referred to by their place in the loop. An `existing` reference to a queue the same template
+// deploys makes the resource appear twice in the compiled template, which ARM rejects.
+var identityQueueIndex = indexOf(queueNames, identityQueueName)
+var doneQueueIndex     = indexOf(queueNames, doneQueueName)
 
 // Each role is on the one queue it's needed for: the worker receives from its own queue and answers on `done`.
 resource workerReceiver 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(identityQueue.id, workerIdentity.id, serviceBusDataReceiverId)
-  scope: identityQueue
+  name: guid(queues[identityQueueIndex].id, workerIdentity.id, serviceBusDataReceiverId)
+  scope: queues[identityQueueIndex]
   properties: {
     principalId: workerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
@@ -131,8 +120,8 @@ resource workerReceiver 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 resource workerSender 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(doneQueue.id, workerIdentity.id, serviceBusDataSenderId)
-  scope: doneQueue
+  name: guid(queues[doneQueueIndex].id, workerIdentity.id, serviceBusDataSenderId)
+  scope: queues[doneQueueIndex]
   properties: {
     principalId: workerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
@@ -143,8 +132,8 @@ resource workerSender 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 // Reading the message count is a management read, which the receiver and sender roles don't grant. KEDA names no role;
 // Microsoft's KEDA workload identity guide for Service Bus assigns Data Owner, the RBAC match for SAS Manage.
 resource scalerOwner 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(identityQueue.id, scalerIdentity.id, serviceBusDataOwnerId)
-  scope: identityQueue
+  name: guid(queues[identityQueueIndex].id, scalerIdentity.id, serviceBusDataOwnerId)
+  scope: queues[identityQueueIndex]
   properties: {
     principalId: scalerIdentity.properties.principalId
     principalType: 'ServicePrincipal'

@@ -23,6 +23,7 @@ internal static class SummaryMarkdown
         EndToEnd(text, summary);
         Failures(text, summary);
         Phases(text, summary);
+        TokenPhases(text, summary);
         Pulls(text, summary);
 
         return text.ToString();
@@ -115,6 +116,45 @@ internal static class SummaryMarkdown
                     Number(group.PhaseMediansSumMs),
                     Number(group.CompleteSamples),
                     Number(group.MaxPhaseSumErrorMs)
+                ]);
+        }
+
+        Line(text);
+        foreach (var phase in names)
+        {
+            Line(text, $"- {phase.Name}: {phase.From} to {phase.To}");
+        }
+    }
+
+    private static void TokenPhases(StringBuilder text, RunSummary summary)
+    {
+        var groups = summary.Groups.Where(group => group.TokenPhases.Count > 0).ToList();
+        if (groups.Count == 0)
+        {
+            return;
+        }
+
+        var names = groups[0].TokenPhases;
+
+        Line(text);
+        Line(text, "## Token medians");
+        Line(text);
+        Line(
+            text,
+            "serviceBusConnection split at the first token, for the variants that sign in with a managed identity. "
+            + "The three phases add up to serviceBusConnection.");
+        Line(text);
+        Row(text, ["Variant", .. names.Select(phase => phase.Name), "Samples"]);
+        Separator(text, names.Count + 2);
+
+        foreach (var group in groups)
+        {
+            Row(
+                text,
+                [
+                    group.Variant,
+                    .. group.TokenPhases.Select(phase => Number(phase.Duration?.MedianMs)),
+                    Number(group.TokenPhases.Min(phase => phase.Duration?.Count ?? 0))
                 ]);
         }
 
