@@ -9,20 +9,27 @@ internal sealed record SampleArguments(
     string? RunName,
     string ResourceGroup,
     string NamePrefix,
-    TimeSpan SampleTimeout)
+    TimeSpan SampleTimeout,
+    string? ForcedPullTag)
 {
     public const string Usage =
         "sample --variant <names> --samples <n> [--warm] [--local] [--dry-run] [--run <name>]\n"
-        + "       [--resource-group <name>] [--name-prefix <prefix>] [--timeout <seconds>]";
+        + "       [--resource-group <name>] [--name-prefix <prefix>] [--timeout <seconds>] [--forced-pull <tag>]";
 
     // Matches infra/main.bicep and infra/apps.bicep with their defaults.
     private const string DefaultResourceGroup = "rg-stz-uksouth";
     private const string DefaultNamePrefix    = "stz";
 
+    // Matches InfraRunner's push-images --forced-pulls, which numbers the copies with two digits.
+    private const int MaxForcedPullSamples = 99;
+
     private static readonly TimeSpan DefaultSampleTimeout = TimeSpan.FromMinutes(10);
 
     // Matches apps.bicep: ca-<prefix>-<variant>.
     public string AppName(string variant) => $"ca-{NamePrefix}-{variant}";
+
+    // Matches InfraRunner's InfraNames.ForcedPullTag: the copy of <variant>-<tag> that sample n runs.
+    public string ForcedPullImageTag(string variant, int sample) => $"{variant}-{ForcedPullTag}-pull-{sample:D2}";
 
     // Returns null, with the reason in error, unless the arguments are a valid sample command.
     public static SampleArguments? Parse(string[] args, out string? error)
@@ -38,6 +45,7 @@ internal sealed record SampleArguments(
         IReadOnlyList<string>? variants      = null;
         int?                   samples       = null;
         string?                runName       = null;
+        string?                forcedPull    = null;
         var                    warm          = false;
         var                    local         = false;
         var                    dryRun        = false;
@@ -76,7 +84,8 @@ internal sealed record SampleArguments(
                     variants = VariantList.Parse(value);
                     if (variants is null)
                     {
-                        error = "--variant takes distinct names, comma-separated, from jit, r2r, aot and jit-chiseled.";
+                        error = "--variant takes distinct names, comma-separated, from jit, r2r, aot, jit-chiseled "
+                                + "and jit-identity.";
                         return null;
                     }
 
@@ -98,6 +107,15 @@ internal sealed record SampleArguments(
                     }
 
                     runName = value;
+                    break;
+                case "--forced-pull":
+                    if (!IsSafeName(value) || !char.IsAsciiLetterOrDigit(value[0]))
+                    {
+                        error = "--forced-pull takes the image tag push-images was given, such as v1.";
+                        return null;
+                    }
+
+                    forcedPull = value;
                     break;
                 case "--resource-group":
                     resourceGroup = value;
@@ -132,6 +150,24 @@ internal sealed record SampleArguments(
             return null;
         }
 
+        if (forcedPull is not null && local)
+        {
+            error = "--forced-pull changes the image of the apps in Azure, and --local runs against the emulator.";
+            return null;
+        }
+
+        if (forcedPull is not null && warm)
+        {
+            error = "--forced-pull is for cold samples: a warm sample runs on a replica that has already pulled.";
+            return null;
+        }
+
+        if (forcedPull is not null && samples > MaxForcedPullSamples)
+        {
+            error = $"--forced-pull takes up to {MaxForcedPullSamples} samples, one image copy each.";
+            return null;
+        }
+
         return new SampleArguments(
             variants,
             samples.Value,
@@ -141,7 +177,8 @@ internal sealed record SampleArguments(
             runName,
             resourceGroup,
             namePrefix,
-            sampleTimeout);
+            sampleTimeout,
+            forcedPull);
     }
 
     private static bool IsSafeName(string value) =>

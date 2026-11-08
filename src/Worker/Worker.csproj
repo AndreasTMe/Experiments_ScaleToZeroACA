@@ -5,9 +5,24 @@
         <RootNamespace>Worker</RootNamespace>
     </PropertyGroup>
 
+    <!-- -p:UseManagedIdentity=true builds the worker that signs in to Service Bus with a user-assigned managed identity
+         instead of a connection string. Only that build references Azure.Identity. -->
+    <PropertyGroup Condition="'$(UseManagedIdentity)' == 'true'">
+        <DefineConstants>$(DefineConstants);USE_MANAGED_IDENTITY</DefineConstants>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="Azure.Messaging.ServiceBus"/>
         <PackageReference Include="Microsoft.Extensions.Hosting"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(UseManagedIdentity)' == 'true'">
+        <PackageReference Include="Azure.Identity"/>
+    </ItemGroup>
+
+    <!-- The credential wrapper only belongs in the managed identity build. -->
+    <ItemGroup Condition="'$(UseManagedIdentity)' != 'true'">
+        <Compile Remove="Identity/**"/>
     </ItemGroup>
 
 </Project>

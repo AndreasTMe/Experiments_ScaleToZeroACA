@@ -21,6 +21,15 @@ internal static class RunAnalyzer
         new("handling", "messageReceived", "doneEnqueued")
     ];
 
+    // serviceBusConnection split at the first token, for a worker that signs in with an identity. They're kept apart
+    // from the phases above so that every variant's serviceBusConnection can still be compared.
+    private static readonly Phase[] TokenPhases =
+    [
+        new("beforeToken", "hostStarted", "firstTokenRequested"),
+        new("token", "firstTokenRequested", "firstTokenAcquired"),
+        new("afterToken", "firstTokenAcquired", "messageReceived")
+    ];
+
     // A warm replica started long before the trigger, so only delivery and handling belong to the sample.
     private static readonly Phase[] WarmPhases =
     [
@@ -28,7 +37,7 @@ internal static class RunAnalyzer
         new("handling", "messageReceived", "doneEnqueued")
     ];
 
-    private static readonly string[] PullKindOrder = ["first", "cached", "unknown"];
+    private static readonly string[] PullKindOrder = ["first", "cached", "unknown", "activation"];
 
     public static RunSummary Analyze(
         string run,
@@ -77,13 +86,14 @@ internal static class RunAnalyzer
 
         // One list per phase, with a duration or null for each ok sample.
         var durations = phases.Select(phase => ok.Select(row => Duration(samples, row, phase)).ToList()).ToList();
-        var summaries = phases
-            .Select((phase, i) => new PhaseSummary(
-                phase.Name,
-                phase.From,
-                phase.To,
-                Statistics.Summarize(durations[i].OfType<double>())))
-            .ToList();
+        var summaries = Summaries(phases, durations);
+
+        // A warm sample's token was taken when its replica started, long before the trigger.
+        var tokenPhases = kind == Cold && ok.Any(row => samples.Time(row, "firstTokenRequested") is not null)
+            ? Summaries(
+                TokenPhases,
+                TokenPhases.Select(phase => ok.Select(row => Duration(samples, row, phase)).ToList()).ToList())
+            : [];
 
         var sumErrors = Enumerable.Range(0, ok.Count)
             .Where(i => durations.All(phase => phase[i] is not null) && samples.Number(ok[i], "endToEndMs") is not null)
@@ -108,15 +118,26 @@ internal static class RunAnalyzer
             warmMedian,
             medianDiff,
             summaries,
+            tokenPhases,
             mediansSum,
             sumErrors.Count,
             sumErrors.Count == 0 ? null : Statistics.Round(sumErrors.Max()),
-            kind == Cold ? Pulls(samples, rows) : []);
+            kind == Cold ? Pulls(samples, rows, ForcedPullTag(config) is not null) : []);
     }
 
+    private static List<PhaseSummary> Summaries(Phase[] phases, List<List<double?>> durations) =>
+        phases
+            .Select((phase, i) => new PhaseSummary(
+                phase.Name,
+                phase.From,
+                phase.To,
+                Statistics.Summarize(durations[i].OfType<double>())))
+            .ToList();
+
     // A sample whose image or digest differs from the previous sample's pulled something new. The first sample of a run
-    // is unknown: the node may still have its image from an earlier run.
-    private static List<PullSummary> Pulls(SampleTable samples, List<string[]> rows)
+    // is unknown: the node may still have its image from an earlier run. A forced-pull sample whose activation replica
+    // pulled first is cached, and the activation pulls get a group of their own.
+    private static List<PullSummary> Pulls(SampleTable samples, List<string[]> rows, bool forcedPull)
     {
         var     kinds    = new List<(string Kind, string[] Row)>();
         string? previous = null;
@@ -130,15 +151,17 @@ internal static class RunAnalyzer
 
             var reference = $"{image}@{samples.Text(row, "imageDigest")}";
             kinds.Add(
-                (previous is null
-                    ? "unknown"
-                    : reference == previous
-                        ? "cached"
-                        : "first", row));
+                (forcedPull && samples.Number(row, "activationPullMs") is not null
+                    ? "cached"
+                    : previous is null
+                        ? "unknown"
+                        : reference == previous
+                            ? "cached"
+                            : "first", row));
             previous = reference;
         }
 
-        return kinds
+        var pulls = kinds
             .Where(pair => samples.Text(pair.Row, "status") == "ok")
             .GroupBy(pair => pair.Kind)
             .OrderBy(group => Array.IndexOf(PullKindOrder, group.Key))
@@ -147,7 +170,37 @@ internal static class RunAnalyzer
                 Statistics.Summarize(group.Select(pair => samples.Number(pair.Row, "pullMs")).OfType<double>()),
                 Statistics.Summarize(group.Select(pair => samples.Number(pair.Row, "endToEndMs")).OfType<double>())))
             .ToList();
+
+        // The end-to-end time a sample would have had with the full pull: its own, with its pull swapped for that one.
+        var activations = rows
+            .Where(row => samples.Text(row, "status") == "ok")
+            .Select(row => (
+                Pull: samples.Number(row, "activationPullMs"),
+                Own: samples.Number(row, "pullMs"),
+                EndToEnd: samples.Number(row, "endToEndMs")))
+            .Where(sample => sample is { Pull: not null, Own: not null, EndToEnd: not null })
+            .ToList();
+
+        if (forcedPull && activations.Count > 0)
+        {
+            pulls.Add(
+                new PullSummary(
+                    "activation",
+                    Statistics.Summarize(activations.Select(sample => sample.Pull!.Value)),
+                    Statistics.Summarize(
+                        activations.Select(sample =>
+                            sample.EndToEnd!.Value - sample.Own!.Value + sample.Pull!.Value))));
+        }
+
+        return pulls;
     }
+
+    private static string? ForcedPullTag(JsonElement? config) =>
+        config is { ValueKind: JsonValueKind.Object } root
+        && root.TryGetProperty("forcedPullTag", out var tag)
+        && tag.ValueKind == JsonValueKind.String
+            ? tag.GetString()
+            : null;
 
     private static double? WarmMedian(SampleTable? warm, string variant)
     {

@@ -2,7 +2,7 @@ namespace Runner.Commands;
 
 internal static class VariantList
 {
-    private static readonly string[] Known = ["jit", "r2r", "aot", "jit-chiseled"];
+    private static readonly string[] Known = ["jit", "r2r", "aot", "jit-chiseled", "jit-identity"];
 
     // Null unless the list is distinct known variants separated by commas.
     public static IReadOnlyList<string>? Parse(string list)

@@ -1,6 +1,6 @@
 namespace Runner.ContainerApps;
 
-// One variant's Container App, read through az. Nothing here changes the app.
+// One variant's Container App, read through az. Only SetImageAsync changes it, for forced pulls.
 internal sealed class ContainerApp
 {
     public const string RegistryHostSuffix = ".azurecr.io";
@@ -78,6 +78,59 @@ internal sealed class ContainerApp
             properties.TryGetProperty("template", out var template) ? PublicNames.Template(template) : null);
     }
 
+    // The image the app's template gives its container now, as a tag.
+    public async Task<string> GetTemplateImageAsync(CancellationToken cancellationToken)
+    {
+        var app = await AzCli.RunJsonWithRetriesAsync(AzCommands.AppShow(Name, ResourceGroup), cancellationToken);
+
+        return app.GetProperty("properties").GetProperty("template").GetProperty("containers")[0]
+            .GetProperty("image")
+            .GetString()!;
+    }
+
+    // Gives the container a new image, which makes a new revision, and waits until that revision is ready. A new
+    // revision is "Activating" while it provisions a replica, and a replica that's counted can be waited out; one
+    // that isn't yet could take the next trigger.
+    public async Task SetImageAsync(
+        string image,
+        TimeSpan pollInterval,
+        TimeSpan limit,
+        CancellationToken cancellationToken)
+    {
+        await AzCli.RunJsonWithRetriesAsync(AzCommands.AppUpdateImage(Name, ResourceGroup, image), cancellationToken);
+
+        var deadline = DateTimeOffset.UtcNow + limit;
+
+        while (true)
+        {
+            var app = await AzCli.RunJsonWithRetriesAsync(
+                AzCommands.AppShow(Name, ResourceGroup),
+                cancellationToken);
+            var properties = app.GetProperty("properties");
+            var latest     = Text(properties, "latestRevisionName");
+            var ready      = Text(properties, "latestReadyRevisionName");
+
+            if (Text(properties, "provisioningState") == "Failed")
+            {
+                throw new InvalidOperationException(
+                    $"{Name} failed to provision with the image {PublicNames.Image(image)}.");
+            }
+
+            if (latest is not null && latest == ready)
+            {
+                return;
+            }
+
+            if (DateTimeOffset.UtcNow >= deadline)
+            {
+                throw new TimeoutException(
+                    $"{Name}'s revision {latest} wasn't ready after {limit.TotalMinutes:F0} minutes.");
+            }
+
+            await Task.Delay(pollInterval, cancellationToken);
+        }
+    }
+
     // The image the revision runs, as a tag. Revisions don't carry the digest, so that comes from the registry.
     public async Task<string> GetImageAsync(string revision, CancellationToken cancellationToken)
     {
@@ -119,6 +172,11 @@ internal sealed class ContainerApp
         _digestByImage[image] = digest;
         return digest;
     }
+
+    private static string? Text(JsonElement properties, string name) =>
+        properties.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 
     // "acrname.azurecr.io/repository:tag" to ("acrname", "repository:tag").
     public static (string Registry, string RepositoryAndTag)? SplitRegistryImage(string image)

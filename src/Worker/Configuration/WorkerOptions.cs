@@ -1,7 +1,12 @@
 namespace Worker.Configuration;
 
 internal sealed record WorkerOptions(
+#if USE_MANAGED_IDENTITY
+    string FullyQualifiedNamespace,
+    string ClientId,
+#else
     string ConnectionString,
+#endif
     string Variant,
     string QueueName,
     string DoneQueueName,
@@ -11,7 +16,12 @@ internal sealed record WorkerOptions(
     // CONTAINER_APP_REPLICA_NAME and CONTAINER_APP_REVISION are set by Container Apps, and are missing in local runs.
     public static WorkerOptions FromEnvironment() =>
         new(
+#if USE_MANAGED_IDENTITY
+            GetRequired("SERVICEBUS_NAMESPACE"),
+            GetRequired("AZURE_CLIENT_ID"),
+#else
             GetRequired("SERVICEBUS_CONNECTION_STRING"),
+#endif
             GetRequired("WORKER_VARIANT"),
             GetRequired("WORKER_QUEUE"),
             GetRequired("WORKER_DONE_QUEUE"),

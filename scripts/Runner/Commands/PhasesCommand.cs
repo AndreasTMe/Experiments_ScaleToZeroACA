@@ -2,7 +2,8 @@ namespace Runner.Commands;
 
 // Adds each cold sample's start-up phases, read from the system logs in the Log Analytics workspace, to
 // results/<run>/samples.csv. A sample without them gets a phases status and the reason. Running it again replaces the
-// phase columns, so a run whose events hadn't arrived yet can be filled in later.
+// phase columns, so a run whose events hadn't arrived yet can be filled in later. In a forced-pull run it also adds the
+// pull of each sample's activation replica, which is the full one.
 internal static class PhasesCommand
 {
     private const string LogAnalyticsExtension = "log-analytics";
@@ -11,15 +12,17 @@ internal static class PhasesCommand
     private static readonly string[] PhaseColumns =
     [
         "scaledOut", "replicaAssigned", "pullStarted", "imagePulled", "pullMs", "imageBytes",
-        "workerCreated", "workerStarted", "phasesStatus", "phasesNote"
+        "workerCreated", "workerStarted", "phasesStatus", "phasesNote",
+        "activationReplica", "activationPullMs", "activationImageBytes"
     ];
 
     private static readonly string[] ReadColumns =
         ["variant", "sample", "kind", "status", "triggerSent", "doneEnqueued", "replicaName", "revisionName"];
 
     // TimeGenerated, which the query filters on, trails the event time, and a replica's events go on until it stops
-    // after the cooldown. Both margins are wider than that.
-    private static readonly TimeSpan WindowBefore = TimeSpan.FromMinutes(5);
+    // after the cooldown. Both margins are wider than that. In a forced-pull run the first revision's activation
+    // replica pulls about six minutes before the first trigger, which the margin before also covers.
+    private static readonly TimeSpan WindowBefore = TimeSpan.FromMinutes(20);
     private static readonly TimeSpan WindowAfter  = TimeSpan.FromMinutes(15);
 
     public static async Task<int> RunAsync(PhasesArguments arguments)
@@ -75,7 +78,8 @@ internal static class PhasesCommand
         var variants = VariantList.Parse(string.Join(',', rows.Select(row => row[column["variant"]]).Distinct()));
         if (variants is null)
         {
-            Console.Error.WriteLine($"{csvPath} has a variant that isn't one of jit, r2r, aot and jit-chiseled.");
+            Console.Error.WriteLine(
+                $"{csvPath} has a variant that isn't one of jit, r2r, aot, jit-chiseled and jit-identity.");
             return 2;
         }
 
@@ -108,6 +112,9 @@ internal static class PhasesCommand
 
         Console.WriteLine($"{events.Count} system log event(s) from {from:u} to {to:u}");
 
+        // Each forced-pull sample runs a revision of its own, so the revision's first replica is its activation one.
+        var forcedPull = await ReadForcedPullTagAsync(csvPath, cancellationToken) is not null;
+
         var phases = rows.Select((row, i) => PhaseMatcher.Match(
                 row[column["kind"]],
                 row[column["status"]],
@@ -117,11 +124,20 @@ internal static class PhasesCommand
                 events))
             .ToList();
 
+        var activations = rows.Select((row, i) => forcedPull && phases[i].Status is "ok" or "partial"
+                ? PhaseMatcher.MatchActivation(
+                    triggers[i]!.Value,
+                    NullIfEmpty(row[column["replicaName"]]),
+                    NullIfEmpty(row[column["revisionName"]]),
+                    events)
+                : null)
+            .ToList();
+
         var output = new StringBuilder();
         output.Append(Csv.FormatLine(kept.Select(i => header[i]).Concat(PhaseColumns)));
         for (var i = 0; i < rows.Count; i++)
         {
-            output.Append(Csv.FormatLine(kept.Select(k => rows[i][k]).Concat(Values(phases[i]))));
+            output.Append(Csv.FormatLine(kept.Select(k => rows[i][k]).Concat(Values(phases[i], activations[i]))));
         }
 
         // Written whole to a file beside it and moved over it, so a failed write leaves the samples as they were.
@@ -137,7 +153,7 @@ internal static class PhasesCommand
         {
             Console.WriteLine(
                 $"{rows[i][column["variant"]],-13} {rows[i][column["sample"]],3} {phases[i].Status,-14} "
-                + Describe(phases[i]));
+                + Describe(phases[i], activations[i]));
         }
 
         Console.WriteLine();
@@ -148,6 +164,23 @@ internal static class PhasesCommand
 
         Console.WriteLine($"Samples: {csvPath}");
         return 0;
+    }
+
+    // The run's forced-pull tag from config.json beside the samples, or null for a run without one or without the file.
+    private static async Task<string?> ReadForcedPullTagAsync(string csvPath, CancellationToken cancellationToken)
+    {
+        var path = Path.Combine(Path.GetDirectoryName(csvPath)!, "config.json");
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        await using var stream   = File.OpenRead(path);
+        using var       document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        return Property(document.RootElement, "forcedPullTag") is { ValueKind: JsonValueKind.String } tag
+            ? tag.GetString()
+            : null;
     }
 
     // Null when the extension or the workspace can't be reached, after saying why.
@@ -227,7 +260,7 @@ internal static class PhasesCommand
     private static JsonElement Property(JsonElement element, string name) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) ? value : default;
 
-    private static string?[] Values(SamplePhases phases) =>
+    private static string?[] Values(SamplePhases phases, ActivationPull? activation) =>
     [
         Time(phases.ScaledOut),
         Time(phases.ReplicaAssigned),
@@ -238,11 +271,18 @@ internal static class PhasesCommand
         Time(phases.WorkerCreated),
         Time(phases.WorkerStarted),
         phases.Status,
-        phases.Note
+        phases.Note,
+        activation?.Replica,
+        activation?.PullMs?.ToString("0.###", CultureInfo.InvariantCulture),
+        activation?.ImageBytes?.ToString(CultureInfo.InvariantCulture)
     ];
 
-    private static string Describe(SamplePhases phases)
+    private static string Describe(SamplePhases phases, ActivationPull? activation)
     {
+        var activationPull = activation?.PullMs is { } activationMs
+            ? string.Create(CultureInfo.InvariantCulture, $", activation pull {activationMs:0} ms")
+            : "";
+
         if (phases.ReplicaAssigned is not { } assigned || phases.WorkerStarted is not { } started)
         {
             return phases.Note ?? "";
@@ -252,7 +292,7 @@ internal static class PhasesCommand
         var pull    = phases.PullMs is { } ms ? string.Create(culture, $", pull {ms:0} ms") : "";
         var details = string.Create(
             culture,
-            $"assigned to worker started {(started - assigned).TotalSeconds:0.000} s{pull}");
+            $"assigned to worker started {(started - assigned).TotalSeconds:0.000} s{pull}{activationPull}");
         return phases.Note is null ? details : $"{details}. {phases.Note}";
     }
 

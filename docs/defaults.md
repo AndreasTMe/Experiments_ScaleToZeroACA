@@ -30,7 +30,8 @@ Local container images, pinned by digest in [local/compose.yaml](../local/compos
 
 ## Queue properties
 
-The same values apply to all five queues (`jit`, `r2r`, `aot`, `jit-chiseled`, `done`), in the emulator and in Azure.
+The same values apply to all six queues (`jit`, `r2r`, `aot`, `jit-chiseled`, `jit-identity`, `done`), in the emulator
+and in Azure; `jit-identity` is in Azure only, since the emulator takes no managed identity.
 They are chosen for this experiment, not platform defaults, and are set in
 [local/emulator-config.json](../local/emulator-config.json).
 

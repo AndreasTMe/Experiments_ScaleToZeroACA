@@ -9,4 +9,8 @@ internal sealed class StartupTimeline
     public DateTimeOffset HostStarted      { get; set; }
     public DateTimeOffset DoneSenderOpened { get; set; }
     public DateTimeOffset ProcessorStarted { get; set; }
+
+    // Set only by the managed identity build, which asks for a token while it opens the done sender.
+    public DateTimeOffset? FirstTokenRequested { get; set; }
+    public DateTimeOffset? FirstTokenAcquired  { get; set; }
 }
