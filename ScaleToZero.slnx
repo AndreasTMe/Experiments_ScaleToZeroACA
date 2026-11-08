@@ -46,6 +46,10 @@
         <File Path="results/forced-pull/summary.json" />
         <File Path="results/forced-pull/summary.md" />
     </Folder>
+    <Folder Name="/results/identity-check/">
+        <File Path="results/identity-check/config.json" />
+        <File Path="results/identity-check/samples.csv" />
+    </Folder>
     <Folder Name="/scripts/">
         <Project Path="scripts/InfraRunner/InfraRunner.csproj" />
         <Project Path="scripts/Runner/Runner.csproj" />

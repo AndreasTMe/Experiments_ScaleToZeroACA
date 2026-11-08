@@ -120,7 +120,8 @@ A scale rule using `identity` with a user-assigned ID instead of `auth` also com
 only identity example is Azure Queue. The one Microsoft example for Service Bus, akskeda, assigns Data Owner to the
 identity KEDA uses. That matches SAS, where keda needs Manage to read the message count, and Receiver and Sender grant
 only `*/receive/action` and `*/send/action` (rolesint). `jit-identity` assigns it on its own queue rather than the
-namespace; that a queue-scoped Data Owner is enough is inferred, not stated, and the first deployment shows it.
+namespace. None of the sources says a queue-scoped Data Owner is enough, but it is: on 2026-11-08 the scale rule
+started a replica for a message on that queue (`results/identity-check`).
 
 The scale rule and the worker use two identities, as the SAS rules are two. `identitySettings` with `lifecycle: 'None'`
 keeps the scaler's identity out of the container, and `'Main'` gives the worker's to the main container only (mi,
