@@ -12,6 +12,13 @@
         <File Path="infra/main.bicepparam" />
         <File Path="infra/names.bicep" />
     </Folder>
+    <Folder Name="/infra/levers/">
+        <File Path="infra/levers/jit-cooldown-60.bicepparam" />
+        <File Path="infra/levers/jit-min-1.bicepparam" />
+        <File Path="infra/levers/jit-polling-10.bicepparam" />
+        <File Path="infra/levers/jit-polling-30.bicepparam" />
+        <File Path="infra/levers/jit-polling-5.bicepparam" />
+    </Folder>
     <Folder Name="/infra/modules/">
         <File Path="infra/modules/base.bicep" />
     </Folder>

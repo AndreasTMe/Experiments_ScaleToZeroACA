@@ -97,6 +97,22 @@ internal static class SampleCommand
 
         // Read before creating the directory, so a run that can't reach Azure leaves nothing behind.
         var config = await DescribeRunAsync(arguments, runName, started, kind, apps, cancellationToken);
+
+        foreach (var snapshot in config.Apps)
+        {
+            Console.WriteLine(DescribeScale(snapshot));
+        }
+
+        // Such an app never reaches zero, so a cold sample would only wait out ZeroWaitLimit.
+        if (!arguments.Warm && config.Apps.FirstOrDefault(snapshot => snapshot.MinReplicas() > 0) is { } alwaysOn)
+        {
+            Console.Error.WriteLine(
+                $"{alwaysOn.Name} has min replicas {alwaysOn.MinReplicas()}, so it never scales to zero. Sample it "
+                + "with --warm.");
+            return 2;
+        }
+
+        var minReplicas = config.Apps.ToDictionary(snapshot => snapshot.Variant, snapshot => snapshot.MinReplicas());
         var originalImages = arguments.ForcedPullTag is null
             ? []
             : await ReadOriginalImagesAsync(arguments, apps, cancellationToken);
@@ -121,6 +137,7 @@ internal static class SampleCommand
                 variant,
                 kind,
                 apps.GetValueOrDefault(variant),
+                minReplicas.GetValueOrDefault(variant),
                 originalImages.GetValueOrDefault(variant),
                 client,
                 dispatcher,
@@ -144,6 +161,7 @@ internal static class SampleCommand
         string variant,
         string kind,
         ContainerApp? app,
+        int minReplicas,
         string? originalImage,
         ServiceBusClient client,
         DoneDispatcher dispatcher,
@@ -178,7 +196,14 @@ internal static class SampleCommand
                 }
                 else if (app is not null && await app.GetReplicaCountAsync(cancellationToken) == 0)
                 {
-                    await WarmUpAsync(variant, sender, dispatcher, arguments.SampleTimeout, cancellationToken);
+                    if (minReplicas > 0)
+                    {
+                        await app.WaitForReplicaAsync(ReplicaPollInterval, RevisionReadyLimit, cancellationToken);
+                    }
+                    else
+                    {
+                        await WarmUpAsync(variant, sender, dispatcher, arguments.SampleTimeout, cancellationToken);
+                    }
                 }
 
                 var row = await TakeSampleAsync(
@@ -482,6 +507,17 @@ internal static class SampleCommand
             snapshots);
     }
 
+    // Printed at the start of a run, to check against the config the apps were meant to be deployed with.
+    private static string DescribeScale(AppSnapshot snapshot)
+    {
+        static string Value(int? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "unset";
+
+        return $"{snapshot.Variant,-13} config {snapshot.ScaleConfig ?? "untagged"}, "
+               + $"min replicas {snapshot.MinReplicas()}, "
+               + $"polling {Value(snapshot.ScaleValue("pollingInterval"))} s, "
+               + $"cooldown {Value(snapshot.ScaleValue("cooldownPeriod"))} s";
+    }
+
     private static void PrintPlan(SampleArguments arguments)
     {
         var kind = arguments.Warm ? "warm" : "cold";
@@ -536,9 +572,12 @@ internal static class SampleCommand
         Console.WriteLine();
         Console.WriteLine(
             arguments.Warm
-                ? "Before each sample, once. If it shows no replicas, an unrecorded warm-up trigger is sent first:"
+                ? "Before each sample, once. If it shows no replicas, an unrecorded warm-up trigger is sent first, or "
+                  + $"for an app with min replicas above 0, it's read every {ReplicaPollInterval.TotalSeconds:F0} s "
+                  + "until the platform has started one:"
                 : $"Before each sample, every {ReplicaPollInterval.TotalSeconds:F0} s until it shows no replicas "
-                  + $"(for up to {ZeroWaitLimit.TotalMinutes:F0} minutes):");
+                  + $"(for up to {ZeroWaitLimit.TotalMinutes:F0} minutes). A run refuses an app with min replicas "
+                  + "above 0, which never scales to zero:");
         foreach (var variant in arguments.Variants)
         {
             PrintCommand(AzCommands.ReplicaList(arguments.AppName(variant), arguments.ResourceGroup));

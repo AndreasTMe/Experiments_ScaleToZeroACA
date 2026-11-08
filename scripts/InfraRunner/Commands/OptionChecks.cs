@@ -43,6 +43,19 @@ internal static class OptionChecks
                 $"--image-tag takes up to {MaxImageTagLength} letters, digits, '_', '.' and '-', not starting with "
                 + "'.' or '-'.");
 
+    // Only the names of the files in infra/levers, so the value can't point anywhere else.
+    public static string ScaleConfig(string value)
+    {
+        var names = LeverFiles.Names();
+
+        return names.Contains(value, StringComparer.Ordinal)
+            ? value
+            : throw new UsageException(
+                names.Count == 0
+                    ? "--config found no parameter files in infra/levers."
+                    : $"--config takes one of: {string.Join(", ", names)}.");
+    }
+
     public static string Email(string value) =>
         value.Count(c => c == '@') == 1
         && value.Length >= 3

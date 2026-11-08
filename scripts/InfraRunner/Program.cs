@@ -36,7 +36,8 @@ static void PrintUsage()
           deploy base --subscription-id <id> --budget-email <address>
                       [--name-prefix <prefix>] [--location <region>] [--preview] [--dry-run]
           deploy apps --subscription-id <id> --image-tag <tag>
-                      [--min-replicas <n>] [--polling-interval <seconds>] [--cooldown-period <seconds>]
+                      [--config <name> | [--min-replicas <n>] [--polling-interval <seconds>]
+                                         [--cooldown-period <seconds>]]
                       [--name-prefix <prefix>] [--location <region>] [--preview] [--dry-run]
           push-images --subscription-id <id> --image-tag <tag> [--variants <names>] [--forced-pulls <n>]
                       [--name-prefix <prefix>] [--dry-run]
@@ -44,6 +45,8 @@ static void PrintUsage()
 
         --preview runs what-if instead of the deployment, which changes nothing.
         --dry-run prints the az and docker commands and runs none of them.
+        --config deploys the apps with a parameter file from infra/levers, such as jit-polling-10, which changes one
+        app's scale settings and tags it with the file's name. Settings passed one by one are tagged custom.
         --forced-pulls also pushes n one-layer copies of each image, <variant>-<tag>-pull-01 and on, for the runner's
         --forced-pull.
         Defaults: --name-prefix stz, --location uksouth, --variants jit,r2r,aot,jit-chiseled,jit-identity.

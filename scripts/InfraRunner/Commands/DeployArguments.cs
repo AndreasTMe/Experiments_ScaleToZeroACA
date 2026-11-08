@@ -1,7 +1,8 @@
 namespace InfraRunner.Commands;
 
 // BudgetEmail is set for the base phase only, and the image and scale settings for the apps phase only. Scale settings
-// left unset keep the template's values: min replicas 0, polling and cooldown at the platform defaults.
+// left unset keep the template's values: min replicas 0, polling and cooldown at the platform defaults. ScaleConfig
+// names a file in infra/levers, and comes instead of the separate settings, so a run's tag always matches a file.
 internal sealed record DeployArguments(
     DeployPhase Phase,
     string SubscriptionId,
@@ -9,6 +10,7 @@ internal sealed record DeployArguments(
     string Location,
     string? BudgetEmail,
     string? ImageTag,
+    string? ScaleConfig,
     int? MinReplicas,
     int? PollingInterval,
     int? CooldownPeriod,
@@ -46,16 +48,25 @@ internal sealed record DeployArguments(
                 null,
                 null,
                 null,
+                null,
                 preview,
                 dryRun);
         }
 
         // The minimums match infra/apps.bicep.
         var imageTag        = OptionChecks.ImageTag(options.Required("--image-tag"));
+        var scaleConfig     = options.Optional("--config") is { } config ? OptionChecks.ScaleConfig(config) : null;
         var minReplicas     = options.OptionalInt("--min-replicas", 0);
         var pollingInterval = options.OptionalInt("--polling-interval", 1);
         var cooldownPeriod  = options.OptionalInt("--cooldown-period", 0);
         options.RejectUnread("deploy apps");
+
+        if (scaleConfig is not null && (minReplicas ?? pollingInterval ?? cooldownPeriod) is not null)
+        {
+            throw new UsageException(
+                "--config sets the scale settings itself, so it can't take --min-replicas, --polling-interval or "
+                + "--cooldown-period too.");
+        }
 
         return new DeployArguments(
             phase,
@@ -64,6 +75,7 @@ internal sealed record DeployArguments(
             location,
             null,
             imageTag,
+            scaleConfig,
             minReplicas,
             pollingInterval,
             cooldownPeriod,

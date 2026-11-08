@@ -66,14 +66,38 @@ internal sealed class ContainerApp
         }
     }
 
+    // For an app with min replicas above 0, whose replica the platform starts again by itself after a restart or a
+    // new revision. A trigger sent before then would be timed against that start.
+    public async Task WaitForReplicaAsync(TimeSpan pollInterval, TimeSpan limit, CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow + limit;
+
+        Console.WriteLine($"{Name}: no replica running, waiting for the platform to start its minimum one.");
+
+        while (await GetReplicaCountAsync(cancellationToken) == 0)
+        {
+            if (DateTimeOffset.UtcNow >= deadline)
+            {
+                throw new TimeoutException(
+                    $"{Name} still had no replica after {limit.TotalMinutes:F0} minutes, with min replicas above 0.");
+            }
+
+            await Task.Delay(pollInterval, cancellationToken);
+        }
+    }
+
     public async Task<AppSnapshot> GetSnapshotAsync(string variant, CancellationToken cancellationToken)
     {
         var app        = await AzCli.RunJsonAsync(AzCommands.AppShow(Name, ResourceGroup), cancellationToken);
         var properties = app.GetProperty("properties");
+        var scaleConfig = app.TryGetProperty("tags", out var tags) && tags.ValueKind == JsonValueKind.Object
+            ? Text(tags, "scaleConfig")
+            : null;
 
         return new AppSnapshot(
             variant,
             Name,
+            scaleConfig,
             properties.TryGetProperty("latestRevisionName", out var revision) ? revision.GetString() : null,
             properties.TryGetProperty("template", out var template) ? PublicNames.Template(template) : null);
     }

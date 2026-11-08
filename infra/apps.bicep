@@ -14,7 +14,7 @@ param namePrefix string = 'stz'
 @minLength(1)
 param imageTag string
 
-@description('Minimum replicas for every app.')
+@description('Minimum replicas for the apps the scale settings apply to. The others get 0.')
 @minValue(0)
 param minReplicas int = 0
 
@@ -26,15 +26,26 @@ param pollingInterval int?
 @minValue(0)
 param cooldownPeriod int?
 
+@description('The one variant the scale settings apply to. Leave unset to apply them to every app.')
+param scaleVariant Variant?
+
+@description('Name of the scale settings, put in the scaleConfig tag of the apps they apply to.')
+@minLength(1)
+param scaleConfig string = 'default'
+
+type Variant = 'jit' | 'r2r' | 'aot' | 'jit-chiseled' | 'jit-identity'
+
 var names = resourceNames(namePrefix, resourceGroup().id)
 
-var variants = [
+var variants Variant[] = [
   'jit'
   'r2r'
   'aot'
   'jit-chiseled'
   'jit-identity'
 ]
+
+var scaledVariants = scaleVariant == null ? variants : [scaleVariant!]
 
 // The one variant that signs in to Service Bus with a managed identity, and scales with one, instead of SAS.
 var identityVariant = 'jit-identity'
@@ -105,7 +116,8 @@ resource apps 'Microsoft.App/containerApps@2026-07-01' = [
   for variant in variants: {
     name: 'ca-${namePrefix}-${variant}'
     location: location
-    tags: union(tags, { variant: variant })
+    // The runner records the tag with each run, so a run shows which settings its apps were deployed with.
+    tags: union(tags, { variant: variant, scaleConfig: contains(scaledVariants, variant) ? scaleConfig : 'default' })
     identity: {
       type: 'UserAssigned'
       userAssignedIdentities: union(
@@ -200,7 +212,7 @@ resource apps 'Microsoft.App/containerApps@2026-07-01' = [
         ]
         scale: union(
           {
-            minReplicas: minReplicas
+            minReplicas: contains(scaledVariants, variant) ? minReplicas : 0
             maxReplicas: 1
             rules: [
               {
@@ -229,7 +241,7 @@ resource apps 'Microsoft.App/containerApps@2026-07-01' = [
               }
             ]
           },
-          scaleOverrides
+          contains(scaledVariants, variant) ? scaleOverrides : {}
         )
       }
     }
