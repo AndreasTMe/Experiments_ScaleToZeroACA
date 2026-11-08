@@ -42,8 +42,18 @@ internal static class DeployCommand
             throw new InvalidOperationException($"Resource group {resourceGroup} doesn't exist. Deploy base first.");
         }
 
-        // Inline values take precedence over the parameter file's.
+        // A lever file extends apps.bicepparam and sets its own scaleConfig tag. Inline values take precedence over the
+        // file's, so settings passed one by one are tagged custom, not with the file's name.
+        var parametersFile = arguments.ScaleConfig is { } scaleConfig
+            ? LeverFiles.PathTo(scaleConfig)
+            : RepositoryRoot.PathTo(Path.Combine("infra", "apps.bicepparam"));
+
         List<string> overrides = [$"namePrefix={arguments.NamePrefix}"];
+
+        if ((arguments.MinReplicas ?? arguments.PollingInterval ?? arguments.CooldownPeriod) is not null)
+        {
+            overrides.Add("scaleConfig=custom");
+        }
 
         if (arguments.MinReplicas is { } minReplicas)
         {
@@ -66,7 +76,7 @@ internal static class DeployCommand
                 "deployment", "group", verb,
                 "--name", InfraNames.AppsDeployment(arguments.NamePrefix),
                 "--resource-group", resourceGroup,
-                "--parameters", RepositoryRoot.PathTo(Path.Combine("infra", "apps.bicepparam")),
+                "--parameters", parametersFile,
                 "--parameters",
                 .. overrides
             ],
