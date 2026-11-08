@@ -139,7 +139,9 @@ internal static class SummaryMarkdown
             text,
             "A first pull is a sample whose image or digest differs from the previous sample's. The first sample of a "
             + "run is unknown, since the node may have its image from an earlier run. The pull time is the one the "
-            + "ImagePulled event reports.");
+            + "ImagePulled event reports. In a forced-pull run each sample's revision started a replica while it "
+            + "activated, which pulled the copy in full before the sample's replica found it cached; the activation "
+            + "row is those full pulls, and its end-to-end median is the samples' with their pull swapped for it.");
         Line(text);
         Row(text, ["Variant", "Pull", "Samples", "Pull median", "Pull p90", "End-to-end median"]);
         Separator(text, 6);
