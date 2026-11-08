@@ -20,7 +20,15 @@ builder.Logging.AddSimpleConsole(console =>
 
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton(timeline);
+#if USE_MANAGED_IDENTITY
+// ManagedIdentityCredential with the client ID, not DefaultAzureCredential, so no other sign-in is tried first.
+var credential = new TimedCredential(
+    new ManagedIdentityCredential(ManagedIdentityId.FromUserAssignedClientId(options.ClientId)),
+    timeline);
+builder.Services.AddSingleton(_ => new ServiceBusClient(options.FullyQualifiedNamespace, credential));
+#else
 builder.Services.AddSingleton(_ => new ServiceBusClient(options.ConnectionString));
+#endif
 builder.Services.AddHostedService<QueueProcessor>();
 
 await builder.Build().RunAsync();

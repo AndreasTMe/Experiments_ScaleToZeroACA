@@ -1,6 +1,6 @@
 # Images
 
-The four worker images, built from `src/Worker/Dockerfile` with `--target <variant>`. Measured on 2026-11-02, for
+The five worker images, built from `src/Worker/Dockerfile` with `--target <variant>`. Measured on 2026-11-02, for
 `linux/amd64`.
 
 ```bash
@@ -15,8 +15,9 @@ docker build -f src/Worker/Dockerfile --target aot -t scale-to-zero-worker:aot .
 | `r2r`          | IL plus ReadyToRun code                | `runtime:10.0.14-noble`               | `dotnet Worker.dll` |
 | `aot`          | Native AOT binary, no `Worker.dbg`     | `runtime-deps:10.0.14-noble-chiseled` | `/app/Worker`       |
 | `jit-chiseled` | IL, framework-dependent, same as `jit` | `runtime:10.0.14-noble-chiseled`      | `dotnet Worker.dll` |
+| `jit-identity` | `jit` built with `UseManagedIdentity`  | `runtime:10.0.14-noble`               | `dotnet Worker.dll` |
 
-All four are built in `mcr.microsoft.com/dotnet/sdk:10.0.403-noble-aot`, publish for `linux-x64`, and run as UID 1654
+All five are built in `mcr.microsoft.com/dotnet/sdk:10.0.403-noble-aot`, publish for `linux-x64`, and run as UID 1654
 (`$APP_UID`, the images' `app` user).
 
 ## Sizes
@@ -65,7 +66,16 @@ The base image defaults were left alone, so these come with each variant:
   do `aot` and `jit`.
 - The chiseled images have no shell or package manager, so a container health check can't run a command inside them.
 - The plain `runtime` image runs as root unless told otherwise. The Dockerfile sets `USER $APP_UID` in every variant,
-  so all four run as UID 1654.
+  so all five run as UID 1654.
+
+## The managed identity build
+
+`jit-identity` is `jit` published with `-p:UseManagedIdentity=true`, which adds `Azure.Identity` and signs in with
+`ManagedIdentityCredential` instead of a connection string. Its image is 208,219,908 bytes uncompressed (measured on
+2026-11-08), 25,758 more than `jit`. Most of that is `Azure.Identity.dll` itself, at 17,952 bytes. The credential types
+are in `Azure.Core.dll` (miid in [platform-facts.md](platform-facts.md) lists both assemblies), and Azure.Core 1.62.0
+already depends on MSAL, so `jit` and every other connection-string image ship `Microsoft.Identity.Client.dll` too.
+The only difference between the two images is the app layer; the base is the same.
 
 ## Forced-pull copies
 

@@ -54,5 +54,5 @@ static void PrintUsage()
     Console.Error.WriteLine($"       {SampleArguments.Usage}");
     Console.Error.WriteLine($"       {PhasesArguments.Usage}");
     Console.Error.WriteLine($"       {AnalyzeArguments.Usage}");
-    Console.Error.WriteLine("Names are comma-separated, from jit, r2r, aot and jit-chiseled.");
+    Console.Error.WriteLine("Names are comma-separated, from jit, r2r, aot, jit-chiseled and jit-identity.");
 }
