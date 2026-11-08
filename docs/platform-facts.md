@@ -30,6 +30,8 @@ page was read. "Page date" is the date in the page's own metadata.
 | acrcli   | [Create a registry with the Azure CLI](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-get-started-azure-cli)                                                            | 2023-10-31       | 2026-11-02 |
 | clirel   | [Azure CLI release notes](https://learn.microsoft.com/en-us/cli/azure/release-notes-azure-cli)                                                                                                         | 2026-10-06 entry | 2026-11-02 |
 | revs     | [Revisions in Azure Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/revisions)                                                                                                  | not recorded     | 2026-11-07 |
+| akskeda  | [KEDA add-on with workload identity on AKS](https://learn.microsoft.com/en-us/azure/aks/keda-workload-identity)                                                                                        | 2024-07-08       | 2026-11-08 |
+| miid     | [ManagedIdentityId class](https://learn.microsoft.com/en-us/dotnet/api/azure.identity.managedidentityid)                                                                                               | not recorded     | 2026-11-08 |
 
 ## API version for the Container Apps
 
@@ -114,8 +116,15 @@ sas agrees that reading a queue's description needs Manage, but has no row for r
 
 A scale rule using `identity` with a user-assigned ID instead of `auth` also compiled with no warnings on 2026-07-01.
 
-Open: **which RBAC role the scale rule's identity needs.** None of scale, mi or keda names one, and scale's only
-identity example is Azure Queue, not Service Bus. It has to be found elsewhere or tested before an identity deployment.
+**The scale rule's identity gets Azure Service Bus Data Owner.** None of scale, mi or keda names a role, and scale's
+only identity example is Azure Queue. The one Microsoft example for Service Bus, akskeda, assigns Data Owner to the
+identity KEDA uses. That matches SAS, where keda needs Manage to read the message count, and Receiver and Sender grant
+only `*/receive/action` and `*/send/action` (rolesint). `jit-identity` assigns it on its own queue rather than the
+namespace; that a queue-scoped Data Owner is enough is inferred, not stated, and the first deployment shows it.
+
+The scale rule and the worker use two identities, as the SAS rules are two. `identitySettings` with `lifecycle: 'None'`
+keeps the scaler's identity out of the container, and `'Main'` gives the worker's to the main container only (mi,
+bicep).
 
 ## Cost in UK South
 
@@ -280,7 +289,8 @@ in the future". Setting `roleAssignmentMode` explicitly keeps `AcrPull` valid wh
 | Azure Service Bus Data Sender   | `69a216fc-b8fb-44d8-bc22-1f3c2cd27a39` | rolesint |
 | Azure Service Bus Data Owner    | `090c5cfd-751d-490a-894a-3ce6f1109419` | rolesint |
 
-Which of these the scale rule's identity needs is still open (see the Service Bus scale rule above).
+The `jit-identity` worker gets Receiver on its queue and Sender on `done`; its scale rule gets Data Owner on its queue
+(see the Service Bus scale rule above).
 
 ## az commands
 

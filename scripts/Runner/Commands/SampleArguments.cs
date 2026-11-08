@@ -84,7 +84,8 @@ internal sealed record SampleArguments(
                     variants = VariantList.Parse(value);
                     if (variants is null)
                     {
-                        error = "--variant takes distinct names, comma-separated, from jit, r2r, aot and jit-chiseled.";
+                        error = "--variant takes distinct names, comma-separated, from jit, r2r, aot, jit-chiseled "
+                                + "and jit-identity.";
                         return null;
                     }
 

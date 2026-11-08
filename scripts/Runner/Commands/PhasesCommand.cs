@@ -78,7 +78,8 @@ internal static class PhasesCommand
         var variants = VariantList.Parse(string.Join(',', rows.Select(row => row[column["variant"]]).Distinct()));
         if (variants is null)
         {
-            Console.Error.WriteLine($"{csvPath} has a variant that isn't one of jit, r2r, aot and jit-chiseled.");
+            Console.Error.WriteLine(
+                $"{csvPath} has a variant that isn't one of jit, r2r, aot, jit-chiseled and jit-identity.");
             return 2;
         }
 

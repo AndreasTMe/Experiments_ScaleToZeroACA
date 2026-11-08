@@ -46,6 +46,6 @@ static void PrintUsage()
         --dry-run prints the az and docker commands and runs none of them.
         --forced-pulls also pushes n one-layer copies of each image, <variant>-<tag>-pull-01 and on, for the runner's
         --forced-pull.
-        Defaults: --name-prefix stz, --location uksouth, --variants jit,r2r,aot,jit-chiseled.
+        Defaults: --name-prefix stz, --location uksouth, --variants jit,r2r,aot,jit-chiseled,jit-identity.
         """);
 }

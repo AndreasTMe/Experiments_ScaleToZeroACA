@@ -8,7 +8,8 @@ internal sealed class SamplesCsv : IDisposable
     [
         "variant", "sample", "kind", "status", "triggerId",
         "zeroObserved", "triggerSent", "triggerEnqueued", "doneEnqueued", "endToEndMs",
-        "processStarted", "mainEntered", "hostStarted", "doneSenderOpened", "processorStarted", "messageReceived",
+        "processStarted", "mainEntered", "hostStarted", "firstTokenRequested", "firstTokenAcquired", "doneSenderOpened",
+        "processorStarted", "messageReceived",
         "replicaName", "revisionName", "image", "imageDigest", "sdkVersion", "runtimeVersion", "error"
     ];
 
@@ -66,6 +67,8 @@ internal sealed class SamplesCsv : IDisposable
             Time(done?.ProcessStarted),
             Time(done?.MainEntered),
             Time(done?.HostStarted),
+            Time(done?.FirstTokenRequested),
+            Time(done?.FirstTokenAcquired),
             Time(done?.DoneSenderOpened),
             Time(done?.ProcessorStarted),
             Time(done?.MessageReceived),
