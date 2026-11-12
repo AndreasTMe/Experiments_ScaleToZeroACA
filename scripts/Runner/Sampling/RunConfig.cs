@@ -9,6 +9,7 @@ internal sealed record RunConfig(
     IReadOnlyList<string> Variants,
     int Samples,
     string? ForcedPullTag,
+    bool RandomDelay,
     double SampleTimeoutSeconds,
     double ReplicaPollSeconds,
     string? ResourceGroup,

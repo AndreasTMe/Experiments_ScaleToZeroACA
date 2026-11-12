@@ -1,0 +1,139 @@
+{
+  "run": "levers-polling-5",
+  "kind": "cold",
+  "warmRun": "levers-min-1",
+  "groups": [
+    {
+      "variant": "jit",
+      "pollingIntervalSeconds": 5,
+      "cooldownPeriodSeconds": 300,
+      "samples": 30,
+      "statuses": {
+        "ok": 30
+      },
+      "endToEnd": {
+        "count": 30,
+        "medianMs": 23017,
+        "p90Ms": 24144.5,
+        "maxMs": 26100
+      },
+      "warmMedianMs": 10,
+      "coldMinusWarmMedianMs": 23007,
+      "phases": [
+        {
+          "name": "polling",
+          "from": "triggerEnqueued",
+          "to": "scaledOut",
+          "duration": {
+            "count": 30,
+            "medianMs": 1974.9,
+            "p90Ms": 3604.7,
+            "maxMs": 4918
+          }
+        },
+        {
+          "name": "scheduling",
+          "from": "scaledOut",
+          "to": "pullStarted",
+          "duration": {
+            "count": 30,
+            "medianMs": 18835.3,
+            "p90Ms": 19363.7,
+            "maxMs": 19429
+          }
+        },
+        {
+          "name": "imagePull",
+          "from": "pullStarted",
+          "to": "imagePulled",
+          "duration": {
+            "count": 30,
+            "medianMs": 118.5,
+            "p90Ms": 164.5,
+            "maxMs": 177
+          }
+        },
+        {
+          "name": "containerStart",
+          "from": "imagePulled",
+          "to": "processStarted",
+          "duration": {
+            "count": 30,
+            "medianMs": 40.7,
+            "p90Ms": 46.3,
+            "maxMs": 55.3
+          }
+        },
+        {
+          "name": "dotnetStartup",
+          "from": "processStarted",
+          "to": "hostStarted",
+          "duration": {
+            "count": 30,
+            "medianMs": 615,
+            "p90Ms": 661.4,
+            "maxMs": 713.2
+          }
+        },
+        {
+          "name": "serviceBusConnection",
+          "from": "hostStarted",
+          "to": "messageReceived",
+          "duration": {
+            "count": 30,
+            "medianMs": 1402,
+            "p90Ms": 1487.9,
+            "maxMs": 1582.9
+          }
+        },
+        {
+          "name": "handling",
+          "from": "messageReceived",
+          "to": "doneEnqueued",
+          "duration": {
+            "count": 30,
+            "medianMs": 103.8,
+            "p90Ms": 171.3,
+            "maxMs": 179.1
+          }
+        }
+      ],
+      "tokenPhases": [],
+      "phaseMediansSumMs": 23090.2,
+      "completeSamples": 30,
+      "maxPhaseSumErrorMs": 0,
+      "pulls": [
+        {
+          "kind": "cached",
+          "pullMs": {
+            "count": 29,
+            "medianMs": 120,
+            "p90Ms": 165.2,
+            "maxMs": 176
+          },
+          "endToEnd": {
+            "count": 29,
+            "medianMs": 23041,
+            "p90Ms": 24202,
+            "maxMs": 26100
+          }
+        },
+        {
+          "kind": "unknown",
+          "pullMs": {
+            "count": 1,
+            "medianMs": 74,
+            "p90Ms": 74,
+            "maxMs": 74
+          },
+          "endToEnd": {
+            "count": 1,
+            "medianMs": 20041,
+            "p90Ms": 20041,
+            "maxMs": 20041
+          }
+        }
+      ]
+    }
+  ]
+}
