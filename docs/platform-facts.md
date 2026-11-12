@@ -156,8 +156,8 @@ Maintenance Hour` and `Environment Private Endpoint` at $0.10 per hour each, all
 nor pricing uses these names. billing says private endpoints and planned maintenance carry a "Dedicated Plan
 Management" charge on either plan, and also says "You aren't billed any plan management charges unless you use a
 Dedicated workload profile in your environment". If a Consumption-only environment with neither feature were charged
-$0.10 per hour, that's about $73 a month, and a $10 budget is used up in about 4 days. Open: check Cost Management a day
-after the environment is created.
+$0.10 per hour, that's about $73 a month, and a $10 budget is used up in about 4 days. Checked in Cost Management for
+2026-11-08 to 2026-11-11: no Container Apps rows at all, so the charge didn't apply (`docs/costs.md`).
 
 Other resources, from prices:
 
