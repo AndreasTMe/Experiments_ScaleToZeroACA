@@ -1,6 +1,24 @@
 <Solution>
+    <Folder Name="/charts/">
+        <File Path="charts/export-data.mjs" />
+    </Folder>
+    <Folder Name="/charts/components/" />
+    <Folder Name="/charts/components/components/">
+        <File Path="charts/components/EndToEnd.astro" />
+        <File Path="charts/components/LatencyVsCost.astro" />
+        <File Path="charts/components/LatencyVsPolling.astro" />
+        <File Path="charts/components/PhaseBreakdown.astro" />
+    </Folder>
+    <Folder Name="/charts/components/components/data/">
+        <File Path="charts/components/data/end-to-end.json" />
+        <File Path="charts/components/data/latency-vs-cost.json" />
+        <File Path="charts/components/data/latency-vs-polling.json" />
+        <File Path="charts/components/data/phase-breakdown.json" />
+    </Folder>
     <Folder Name="/docs/">
         <File Path="docs/aot.md" />
+        <File Path="docs/charts.md" />
+        <File Path="docs/costs.md" />
         <File Path="docs/defaults.md" />
         <File Path="docs/images.md" />
         <File Path="docs/platform-facts.md" />
@@ -11,6 +29,13 @@
         <File Path="infra/main.bicep" />
         <File Path="infra/main.bicepparam" />
         <File Path="infra/names.bicep" />
+    </Folder>
+    <Folder Name="/infra/levers/">
+        <File Path="infra/levers/jit-cooldown-60.bicepparam" />
+        <File Path="infra/levers/jit-min-1.bicepparam" />
+        <File Path="infra/levers/jit-polling-10.bicepparam" />
+        <File Path="infra/levers/jit-polling-30.bicepparam" />
+        <File Path="infra/levers/jit-polling-5.bicepparam" />
     </Folder>
     <Folder Name="/infra/modules/">
         <File Path="infra/modules/base.bicep" />
@@ -55,6 +80,41 @@
         <File Path="results/identity-cold/samples.csv" />
         <File Path="results/identity-cold/summary.json" />
         <File Path="results/identity-cold/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-cooldown-60/">
+        <File Path="results/levers-cooldown-60/config.json" />
+        <File Path="results/levers-cooldown-60/samples.csv" />
+        <File Path="results/levers-cooldown-60/summary.json" />
+        <File Path="results/levers-cooldown-60/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-min-1/">
+        <File Path="results/levers-min-1/config.json" />
+        <File Path="results/levers-min-1/metrics.json" />
+        <File Path="results/levers-min-1/samples.csv" />
+    </Folder>
+    <Folder Name="/results/levers-polling-10/">
+        <File Path="results/levers-polling-10/config.json" />
+        <File Path="results/levers-polling-10/samples.csv" />
+        <File Path="results/levers-polling-10/summary.json" />
+        <File Path="results/levers-polling-10/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-polling-30-random/">
+        <File Path="results/levers-polling-30-random/config.json" />
+        <File Path="results/levers-polling-30-random/samples.csv" />
+        <File Path="results/levers-polling-30-random/summary.json" />
+        <File Path="results/levers-polling-30-random/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-polling-30/">
+        <File Path="results/levers-polling-30/config.json" />
+        <File Path="results/levers-polling-30/samples.csv" />
+        <File Path="results/levers-polling-30/summary.json" />
+        <File Path="results/levers-polling-30/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-polling-5/">
+        <File Path="results/levers-polling-5/config.json" />
+        <File Path="results/levers-polling-5/samples.csv" />
+        <File Path="results/levers-polling-5/summary.json" />
+        <File Path="results/levers-polling-5/summary.md" />
     </Folder>
     <Folder Name="/scripts/">
         <Project Path="scripts/InfraRunner/InfraRunner.csproj" />

@@ -1,0 +1,91 @@
+{
+    "run" : "baseline-cold",
+    "phases" : [
+        {
+            "name" : "polling",
+            "label" : "KEDA polling"
+        },
+        {
+            "name" : "scheduling",
+            "label" : "Scheduling"
+        },
+        {
+            "name" : "imagePull",
+            "label" : "Image pull"
+        },
+        {
+            "name" : "containerStart",
+            "label" : "Container start"
+        },
+        {
+            "name" : "dotnetStartup",
+            "label" : ".NET startup"
+        },
+        {
+            "name" : "serviceBusConnection",
+            "label" : "Service Bus connection"
+        },
+        {
+            "name" : "handling",
+            "label" : "Handling"
+        }
+    ],
+    "variants" : [
+        {
+            "variant" : "jit",
+            "label" : "JIT",
+            "endToEndMedianMs" : 44229,
+            "phaseMediansMs" : {
+                "polling" : 23518.3,
+                "scheduling" : 19061.6,
+                "imagePull" : 103,
+                "containerStart" : 39,
+                "dotnetStartup" : 640.8,
+                "serviceBusConnection" : 1495.9,
+                "handling" : 107
+            }
+        },
+        {
+            "variant" : "jit-chiseled",
+            "label" : "JIT, chiseled",
+            "endToEndMedianMs" : 43779,
+            "phaseMediansMs" : {
+                "polling" : 24296.3,
+                "scheduling" : 18919.4,
+                "imagePull" : 99.1,
+                "containerStart" : 33.6,
+                "dotnetStartup" : 623.4,
+                "serviceBusConnection" : 1218.9,
+                "handling" : 140.5
+            }
+        },
+        {
+            "variant" : "r2r",
+            "label" : "ReadyToRun",
+            "endToEndMedianMs" : 45288,
+            "phaseMediansMs" : {
+                "polling" : 25251.5,
+                "scheduling" : 19080.8,
+                "imagePull" : 97.9,
+                "containerStart" : 43.2,
+                "dotnetStartup" : 447,
+                "serviceBusConnection" : 977.8,
+                "handling" : 71.8
+            }
+        },
+        {
+            "variant" : "aot",
+            "label" : "Native AOT",
+            "endToEndMedianMs" : 41162.5,
+            "phaseMediansMs" : {
+                "polling" : 24494.5,
+                "scheduling" : 18914.1,
+                "imagePull" : 108.6,
+                "containerStart" : 31.3,
+                "dotnetStartup" : 97.6,
+                "serviceBusConnection" : 133.5,
+                "handling" : -6
+            }
+        }
+    ]
+}

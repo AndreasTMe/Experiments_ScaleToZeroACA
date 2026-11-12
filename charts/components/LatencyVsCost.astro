@@ -1,0 +1,169 @@
+---
+// Chart 4: jit's median end-to-end time against the monthly bill, scale to zero settings against one replica always on.
+import data from "./data/latency-vs-cost.json";
+
+const width = 720;
+const height = 380;
+const margin = { top: 16, right: 24, bottom: 72, left: 52 };
+const plotWidth = width - margin.left - margin.right;
+const plotHeight = height - margin.top - margin.bottom;
+const valueStep = 10000;
+const costStep = 5;
+
+const points = data.scaleToZero;
+const alwaysOn = data.alwaysOn;
+const maxValue = Math.ceil(Math.max(...points.map((point) => point.medianMs)) / valueStep) * valueStep;
+const maxCost = Math.ceil(alwaysOn.monthlyCostActive / costStep) * costStep;
+const valueTicks = Array.from({ length: maxValue / valueStep + 1 }, (_, index) => index * valueStep);
+const costTicks = Array.from({ length: maxCost / costStep + 1 }, (_, index) => index * costStep);
+
+const x = (cost: number) => margin.left + (cost / maxCost) * plotWidth;
+const y = (ms: number) => margin.top + plotHeight - (ms / maxValue) * plotHeight;
+
+// Wake-ups a month at which the defaults cost as much as one replica billed idle all month.
+const defaults = points.find((point) => point.key === "defaults")!;
+const breakEven = Math.round(alwaysOn.monthlyCostIdle / defaults.costPerWakeUp / 100) * 100;
+
+const seconds = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
+const dollars = (cost: number) => `$${cost.toFixed(2)}`;
+const summary = `Scatter of jit's median end-to-end time against monthly cost at ${data.wakeUpsPerMonth.toLocaleString("en-GB")} wake-ups a month. ${points
+    .map((point) => `${point.label}: ${seconds(point.medianMs)} for ${dollars(point.monthlyCost)}`)
+    .join("; ")}. ${alwaysOn.label}: ${seconds(alwaysOn.medianMs)} for ${dollars(alwaysOn.monthlyCostIdle)} billed idle to ${dollars(alwaysOn.monthlyCostActive)} billed active.`;
+---
+
+<figure class="chart">
+    <ul class="legend">
+        <li><span class="key solid"></span>Sent at a random time</li>
+        <li><span class="key hollow"></span>Sent as soon as zero is seen</li>
+    </ul>
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={summary}>
+        {
+            valueTicks.map((value) => (
+                <g>
+                    <line class="grid" x1={margin.left} x2={margin.left + plotWidth} y1={y(value)} y2={y(value)} />
+                    <text class="tick" x={margin.left - 12} y={y(value)} text-anchor="end" dominant-baseline="middle">
+                        {value / 1000}
+                    </text>
+                </g>
+            ))
+        }
+        {
+            costTicks.map((cost) => (
+                <text class="tick" x={x(cost)} y={margin.top + plotHeight + 32} text-anchor="middle">
+                    {`$${cost}`}
+                </text>
+            ))
+        }
+        <text class="axis-title" x={margin.left + plotWidth / 2} y={height - 8} text-anchor="middle">
+            {`Monthly cost at ${data.wakeUpsPerMonth.toLocaleString("en-GB")} wake-ups (USD)`}
+        </text>
+        <line class="always-on" x1={x(alwaysOn.monthlyCostIdle)} x2={x(alwaysOn.monthlyCostActive)} y1={y(alwaysOn.medianMs)} y2={y(alwaysOn.medianMs)}>
+            <title>
+                {`${alwaysOn.label}: ${seconds(alwaysOn.medianMs)}, ${dollars(alwaysOn.monthlyCostIdle)} billed idle to ${dollars(alwaysOn.monthlyCostActive)} billed active`}
+            </title>
+        </line>
+        <text class="label" x={x(alwaysOn.monthlyCostIdle)} y={y(alwaysOn.medianMs) - 16}>
+            {`${alwaysOn.label}, ${seconds(alwaysOn.medianMs)}: ${dollars(alwaysOn.monthlyCostIdle)} idle to ${dollars(alwaysOn.monthlyCostActive)} active`}
+        </text>
+        {
+            points.map((point) => (
+                <g>
+                    <circle
+                        class={`marker ${point.arrival === "random" ? "solid" : "hollow"}`}
+                        cx={x(point.monthlyCost)}
+                        cy={y(point.medianMs)}
+                        r="6"
+                    >
+                        <title>{`${point.label}: ${seconds(point.medianMs)}, ${dollars(point.monthlyCost)} a month`}</title>
+                    </circle>
+                    <text class="label" x={x(point.monthlyCost) + 14} y={y(point.medianMs)} dominant-baseline="middle">
+                        {`${point.label}, ${seconds(point.medianMs)}, ${dollars(point.monthlyCost)}`}
+                    </text>
+                </g>
+            ))
+        }
+    </svg>
+    <figcaption>
+        Median seconds from trigger to done for jit against the monthly bill for one app, at {data.wakeUpsPerMonth.toLocaleString("en-GB")}{" "}
+        wake-ups a month and list prices. Scaled to zero, each wake-up is billed for the replica's lifetime until it's back at
+        zero; always on is billed all month, at the idle rate if it's mostly waiting. Above about {breakEven.toLocaleString("en-GB")}{" "}
+        wake-ups a month on the defaults, one replica billed idle costs less. Hollow points sent the trigger as soon as zero was
+        seen, so their times are near the top of what a real message would wait.
+    </figcaption>
+</figure>
+
+<style>
+    .chart {
+        margin: 2em 0;
+    }
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25em 1.25em;
+        margin: 0 0 1em;
+        padding: 0;
+        list-style: none;
+        font-size: 0.875rem;
+    }
+    .legend li {
+        display: flex;
+        align-items: center;
+        gap: 0.4em;
+    }
+    .key {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2px solid var(--accent);
+    }
+    .key.solid {
+        background: var(--accent);
+    }
+    svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+    .grid {
+        stroke: var(--line);
+    }
+    .tick,
+    .axis-title {
+        fill: var(--muted);
+        font-family: var(--font-display);
+        font-size: 15px;
+    }
+    .label {
+        fill: var(--fg);
+        font-family: var(--font-display);
+        font-size: 15px;
+    }
+    .always-on {
+        stroke: var(--fg);
+        stroke-width: 6;
+        stroke-linecap: round;
+    }
+    .marker {
+        stroke: var(--accent);
+        stroke-width: 2;
+    }
+    .marker.solid {
+        fill: var(--accent);
+    }
+    .marker.hollow {
+        fill: var(--bg);
+    }
+    /* The SVG scales down on a phone, so its text starts larger there. */
+    @media (max-width: 520px) {
+        .tick,
+        .axis-title,
+        .label {
+            font-size: 22px;
+        }
+    }
+    figcaption {
+        margin-top: 0.5em;
+        color: var(--muted);
+        font-size: 0.875rem;
+    }
+</style>

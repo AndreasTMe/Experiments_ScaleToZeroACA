@@ -1,0 +1,33 @@
+{
+    "variant" : "jit",
+    "afterScaleIn" : [
+        {
+            "run" : "levers-polling-5",
+            "pollingIntervalSeconds" : 5,
+            "endToEndMedianMs" : 23017,
+            "endToEndP90Ms" : 24144.5,
+            "pollingMedianMs" : 1974.9
+        },
+        {
+            "run" : "levers-polling-10",
+            "pollingIntervalSeconds" : 10,
+            "endToEndMedianMs" : 27971,
+            "endToEndP90Ms" : 31254.7,
+            "pollingMedianMs" : 6856.6
+        },
+        {
+            "run" : "levers-polling-30",
+            "pollingIntervalSeconds" : 30,
+            "endToEndMedianMs" : 43922,
+            "endToEndP90Ms" : 48112.2,
+            "pollingMedianMs" : 23138.7
+        }
+    ],
+    "randomArrival" : {
+        "run" : "levers-polling-30-random",
+        "pollingIntervalSeconds" : 30,
+        "endToEndMedianMs" : 32747,
+        "endToEndP90Ms" : 43938.7,
+        "pollingMedianMs" : 11115.4
+    }
+}

@@ -18,6 +18,9 @@ internal static class SampleCommand
     // A new revision is usually ready within a minute or two. Longer means it can't start, such as a missing image.
     private static readonly TimeSpan RevisionReadyLimit = TimeSpan.FromMinutes(10);
 
+    // Container Apps' KEDA polling interval when the app doesn't set one.
+    private const int DefaultPollingSeconds = 30;
+
     private static readonly string SdkVersion =
         typeof(ServiceBusClient).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion
@@ -97,6 +100,25 @@ internal static class SampleCommand
 
         // Read before creating the directory, so a run that can't reach Azure leaves nothing behind.
         var config = await DescribeRunAsync(arguments, runName, started, kind, apps, cancellationToken);
+
+        foreach (var snapshot in config.Apps)
+        {
+            Console.WriteLine(DescribeScale(snapshot));
+        }
+
+        // Such an app never reaches zero, so a cold sample would only wait out ZeroWaitLimit.
+        if (!arguments.Warm && config.Apps.FirstOrDefault(snapshot => snapshot.MinReplicas() > 0) is { } alwaysOn)
+        {
+            Console.Error.WriteLine(
+                $"{alwaysOn.Name} has min replicas {alwaysOn.MinReplicas()}, so it never scales to zero. Sample it "
+                + "with --warm.");
+            return 2;
+        }
+
+        var minReplicas = config.Apps.ToDictionary(snapshot => snapshot.Variant, snapshot => snapshot.MinReplicas());
+        var delayLimits = arguments.RandomDelay
+            ? config.Apps.ToDictionary(snapshot => snapshot.Variant, PollingInterval)
+            : [];
         var originalImages = arguments.ForcedPullTag is null
             ? []
             : await ReadOriginalImagesAsync(arguments, apps, cancellationToken);
@@ -121,6 +143,8 @@ internal static class SampleCommand
                 variant,
                 kind,
                 apps.GetValueOrDefault(variant),
+                minReplicas.GetValueOrDefault(variant),
+                delayLimits.GetValueOrDefault(variant),
                 originalImages.GetValueOrDefault(variant),
                 client,
                 dispatcher,
@@ -144,6 +168,8 @@ internal static class SampleCommand
         string variant,
         string kind,
         ContainerApp? app,
+        int minReplicas,
+        TimeSpan delayLimit,
         string? originalImage,
         ServiceBusClient client,
         DoneDispatcher dispatcher,
@@ -175,10 +201,27 @@ internal static class SampleCommand
                         ReplicaPollInterval,
                         ZeroWaitLimit,
                         cancellationToken);
+
+                    // Scale-in happens on a KEDA check, so a trigger sent as soon as zero is seen lands at about the
+                    // same point in every polling interval. A random delay of up to one interval spreads the triggers
+                    // across it, as arrivals that don't follow scale-in would be.
+                    if (delayLimit > TimeSpan.Zero)
+                    {
+                        var delay = delayLimit * Random.Shared.NextDouble();
+                        Console.WriteLine($"{variant}: waiting a random {delay.TotalSeconds:F1} s before the trigger.");
+                        await Task.Delay(delay, cancellationToken);
+                    }
                 }
                 else if (app is not null && await app.GetReplicaCountAsync(cancellationToken) == 0)
                 {
-                    await WarmUpAsync(variant, sender, dispatcher, arguments.SampleTimeout, cancellationToken);
+                    if (minReplicas > 0)
+                    {
+                        await app.WaitForReplicaAsync(ReplicaPollInterval, RevisionReadyLimit, cancellationToken);
+                    }
+                    else
+                    {
+                        await WarmUpAsync(variant, sender, dispatcher, arguments.SampleTimeout, cancellationToken);
+                    }
                 }
 
                 var row = await TakeSampleAsync(
@@ -472,6 +515,7 @@ internal static class SampleCommand
             arguments.Variants,
             arguments.Samples,
             arguments.ForcedPullTag,
+            arguments.RandomDelay,
             arguments.SampleTimeout.TotalSeconds,
             ReplicaPollInterval.TotalSeconds,
             arguments.Local ? null : arguments.ResourceGroup,
@@ -480,6 +524,20 @@ internal static class SampleCommand
             RuntimeInformation.OSDescription,
             azVersion,
             snapshots);
+    }
+
+    private static TimeSpan PollingInterval(AppSnapshot snapshot) =>
+        TimeSpan.FromSeconds(snapshot.ScaleValue("pollingInterval") ?? DefaultPollingSeconds);
+
+    // Printed at the start of a run, to check against the config the apps were meant to be deployed with.
+    private static string DescribeScale(AppSnapshot snapshot)
+    {
+        static string Value(int? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "unset";
+
+        return $"{snapshot.Variant,-13} config {snapshot.ScaleConfig ?? "untagged"}, "
+               + $"min replicas {snapshot.MinReplicas()}, "
+               + $"polling {Value(snapshot.ScaleValue("pollingInterval"))} s, "
+               + $"cooldown {Value(snapshot.ScaleValue("cooldownPeriod"))} s";
     }
 
     private static void PrintPlan(SampleArguments arguments)
@@ -536,9 +594,15 @@ internal static class SampleCommand
         Console.WriteLine();
         Console.WriteLine(
             arguments.Warm
-                ? "Before each sample, once. If it shows no replicas, an unrecorded warm-up trigger is sent first:"
+                ? "Before each sample, once. If it shows no replicas, an unrecorded warm-up trigger is sent first, or "
+                  + $"for an app with min replicas above 0, it's read every {ReplicaPollInterval.TotalSeconds:F0} s "
+                  + "until the platform has started one:"
                 : $"Before each sample, every {ReplicaPollInterval.TotalSeconds:F0} s until it shows no replicas "
-                  + $"(for up to {ZeroWaitLimit.TotalMinutes:F0} minutes):");
+                  + $"(for up to {ZeroWaitLimit.TotalMinutes:F0} minutes). A run refuses an app with min replicas "
+                  + "above 0, which never scales to zero"
+                  + (arguments.RandomDelay
+                      ? ". Then it waits a random time up to the app's polling interval before sending the trigger:"
+                      : ":"));
         foreach (var variant in arguments.Variants)
         {
             PrintCommand(AzCommands.ReplicaList(arguments.AppName(variant), arguments.ResourceGroup));
