@@ -1,0 +1,218 @@
+---
+// Chart 1: where a cold start's time goes, as one stacked bar of phase medians per variant.
+// The second view leaves out polling and scheduling, so the phases the image and runtime decide are visible.
+import data from "./data/phase-breakdown.json";
+
+const width = 720;
+const labelWidth = 150;
+const valueWidth = 80;
+const barHeight = 26;
+const barGap = 12;
+const axisHeight = 34;
+const barArea = width - labelWidth - valueWidth;
+
+const phaseNames = data.phases.map((phase) => phase.name);
+const replicaPhases = phaseNames.slice(2);
+
+const views = [
+    {
+        title: "From trigger to done",
+        names: phaseNames,
+        tickStep: 10000,
+    },
+    {
+        title: "From image pull to done",
+        names: replicaPhases,
+        tickStep: 500,
+    },
+];
+
+// A phase median can come out just below zero across two clocks (handling on Native AOT); it's drawn as zero.
+const duration = (variant: (typeof data.variants)[number], name: string) =>
+    Math.max(0, variant.phaseMediansMs[name as keyof typeof variant.phaseMediansMs]);
+
+const total = (variant: (typeof data.variants)[number], names: string[]) =>
+    names.reduce((sum, name) => sum + duration(variant, name), 0);
+
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
+const tickLabel = (ms: number, step: number) => (step < 1000 ? `${(ms / 1000).toFixed(1)}` : `${ms / 1000}`);
+
+const height = data.variants.length * (barHeight + barGap) - barGap + axisHeight;
+
+const prepared = views.map((view) => {
+    const max = Math.ceil(Math.max(...data.variants.map((variant) => total(variant, view.names))) / view.tickStep) *
+        view.tickStep;
+    const x = (ms: number) => labelWidth + (ms / max) * barArea;
+    const ticks = Array.from({ length: max / view.tickStep + 1 }, (_, index) => index * view.tickStep);
+    const rows = data.variants.map((variant, index) => {
+        let start = 0;
+        const segments = view.names.map((name) => {
+            const value = duration(variant, name);
+            const segment = { name, value, x: x(start), width: x(start + value) - x(start) };
+            start += value;
+            return segment;
+        });
+        return { variant, y: index * (barHeight + barGap), segments, total: start };
+    });
+    const summary = `${view.title}, median milliseconds per phase. ${rows
+        .map(
+            ({ variant, segments, total: sum }) =>
+                `${variant.label}: ${segments
+                    .map(({ name, value }) => `${data.phases.find((phase) => phase.name === name)?.label} ${Math.round(value)}`)
+                    .join(", ")}; ${seconds(sum)} in all`,
+        )
+        .join(". ")}.`;
+    return { ...view, x, ticks, rows, summary };
+});
+
+const phaseLabel = (name: string) => data.phases.find((phase) => phase.name === name)?.label ?? name;
+---
+
+<figure class="chart">
+    <ul class="legend">
+        {
+            data.phases.map(({ name, label }) => (
+                <li>
+                    <span class={`swatch ${name}`} />
+                    {label}
+                </li>
+            ))
+        }
+    </ul>
+    {
+        prepared.map(({ title, x, ticks, rows, summary, tickStep }) => (
+            <div class="view">
+                <div class="view-title">{title}</div>
+                <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={summary}>
+                    {ticks.map((tick) => (
+                        <g>
+                            <line class="grid" x1={x(tick)} x2={x(tick)} y1="0" y2={height - axisHeight + 4} />
+                            <text class="tick" x={x(tick)} y={height - 8} text-anchor="middle">
+                                {tickLabel(tick, tickStep)}
+                            </text>
+                        </g>
+                    ))}
+                    {rows.map(({ variant, y, segments, total: sum }) => (
+                        <g>
+                            <text class="label" x="0" y={y + barHeight / 2} dominant-baseline="middle">
+                                {variant.label}
+                            </text>
+                            {segments.map(({ name, value, x: segmentX, width: segmentWidth }) => (
+                                <rect class={`bar ${name}`} x={segmentX} y={y} width={segmentWidth} height={barHeight}>
+                                    <title>{`${variant.label}, ${phaseLabel(name)}: ${Math.round(value)} ms`}</title>
+                                </rect>
+                            ))}
+                            <text class="value" x={x(sum) + 6} y={y + barHeight / 2} dominant-baseline="middle">
+                                {seconds(sum)}
+                            </text>
+                        </g>
+                    ))}
+                </svg>
+            </div>
+        ))
+    }
+    <figcaption>
+        Median time in each phase of a cold start, in seconds, for each variant on the default scale settings (30 s
+        polling, 300 s cooldown), 30 samples each. Each trigger was sent as soon as the app was seen at zero, which lands
+        just after a KEDA check, so polling is close to its longest here.
+    </figcaption>
+</figure>
+
+<style>
+    .chart {
+        margin: 2em 0;
+    }
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25em 1.25em;
+        margin: 0 0 1em;
+        padding: 0;
+        list-style: none;
+        font-size: 0.875rem;
+    }
+    .legend li {
+        display: flex;
+        align-items: center;
+        gap: 0.4em;
+    }
+    .swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+    }
+    .view {
+        margin-bottom: 1.5em;
+    }
+    .view-title {
+        margin: 0 0 0.5em;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+    .grid {
+        stroke: var(--line);
+    }
+    .bar {
+        stroke: var(--bg);
+        stroke-width: 1;
+    }
+    .polling {
+        background: var(--fg);
+        fill: var(--fg);
+    }
+    .scheduling {
+        background: var(--muted);
+        fill: var(--muted);
+    }
+    .imagePull {
+        background: color-mix(in srgb, var(--accent) 30%, var(--bg));
+        fill: color-mix(in srgb, var(--accent) 30%, var(--bg));
+    }
+    .containerStart {
+        background: color-mix(in srgb, var(--accent) 60%, var(--bg));
+        fill: color-mix(in srgb, var(--accent) 60%, var(--bg));
+    }
+    .dotnetStartup {
+        background: var(--accent);
+        fill: var(--accent);
+    }
+    .serviceBusConnection {
+        background: color-mix(in srgb, var(--accent) 55%, var(--fg));
+        fill: color-mix(in srgb, var(--accent) 55%, var(--fg));
+    }
+    .handling {
+        background: color-mix(in srgb, var(--fg) 30%, var(--bg));
+        fill: color-mix(in srgb, var(--fg) 30%, var(--bg));
+    }
+    .tick,
+    .label,
+    .value {
+        font-family: var(--font-display);
+        font-size: 15px;
+    }
+    .tick,
+    .label {
+        fill: var(--muted);
+    }
+    .value {
+        fill: var(--fg);
+    }
+    /* The SVG scales down on a phone, so its text starts larger there. */
+    @media (max-width: 520px) {
+        .tick,
+        .label,
+        .value {
+            font-size: 22px;
+        }
+    }
+    figcaption {
+        margin-top: 0.5em;
+        color: var(--muted);
+        font-size: 0.875rem;
+    }
+</style>
