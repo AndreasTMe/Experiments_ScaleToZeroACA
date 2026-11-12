@@ -10,11 +10,13 @@ internal sealed record SampleArguments(
     string ResourceGroup,
     string NamePrefix,
     TimeSpan SampleTimeout,
-    string? ForcedPullTag)
+    string? ForcedPullTag,
+    bool RandomDelay)
 {
     public const string Usage =
         "sample --variant <names> --samples <n> [--warm] [--local] [--dry-run] [--run <name>]\n"
-        + "       [--resource-group <name>] [--name-prefix <prefix>] [--timeout <seconds>] [--forced-pull <tag>]";
+        + "       [--resource-group <name>] [--name-prefix <prefix>] [--timeout <seconds>] [--forced-pull <tag>]\n"
+        + "       [--random-delay]";
 
     // Matches infra/main.bicep and infra/apps.bicep with their defaults.
     private const string DefaultResourceGroup = "rg-stz-uksouth";
@@ -49,6 +51,7 @@ internal sealed record SampleArguments(
         var                    warm          = false;
         var                    local         = false;
         var                    dryRun        = false;
+        var                    randomDelay   = false;
         var                    resourceGroup = DefaultResourceGroup;
         var                    namePrefix    = DefaultNamePrefix;
         var                    sampleTimeout = DefaultSampleTimeout;
@@ -67,6 +70,9 @@ internal sealed record SampleArguments(
                     continue;
                 case "--dry-run":
                     dryRun = true;
+                    continue;
+                case "--random-delay":
+                    randomDelay = true;
                     continue;
             }
 
@@ -168,6 +174,13 @@ internal sealed record SampleArguments(
             return null;
         }
 
+        if (randomDelay && (warm || local))
+        {
+            error = "--random-delay is for cold samples in Azure: it spreads each trigger across the app's KEDA "
+                    + "polling interval after scale-in.";
+            return null;
+        }
+
         return new SampleArguments(
             variants,
             samples.Value,
@@ -178,7 +191,8 @@ internal sealed record SampleArguments(
             resourceGroup,
             namePrefix,
             sampleTimeout,
-            forcedPull);
+            forcedPull,
+            randomDelay);
     }
 
     private static bool IsSafeName(string value) =>

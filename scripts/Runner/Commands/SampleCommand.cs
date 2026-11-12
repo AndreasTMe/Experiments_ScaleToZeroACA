@@ -18,6 +18,9 @@ internal static class SampleCommand
     // A new revision is usually ready within a minute or two. Longer means it can't start, such as a missing image.
     private static readonly TimeSpan RevisionReadyLimit = TimeSpan.FromMinutes(10);
 
+    // Container Apps' KEDA polling interval when the app doesn't set one.
+    private const int DefaultPollingSeconds = 30;
+
     private static readonly string SdkVersion =
         typeof(ServiceBusClient).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion
@@ -113,6 +116,9 @@ internal static class SampleCommand
         }
 
         var minReplicas = config.Apps.ToDictionary(snapshot => snapshot.Variant, snapshot => snapshot.MinReplicas());
+        var delayLimits = arguments.RandomDelay
+            ? config.Apps.ToDictionary(snapshot => snapshot.Variant, PollingInterval)
+            : [];
         var originalImages = arguments.ForcedPullTag is null
             ? []
             : await ReadOriginalImagesAsync(arguments, apps, cancellationToken);
@@ -138,6 +144,7 @@ internal static class SampleCommand
                 kind,
                 apps.GetValueOrDefault(variant),
                 minReplicas.GetValueOrDefault(variant),
+                delayLimits.GetValueOrDefault(variant),
                 originalImages.GetValueOrDefault(variant),
                 client,
                 dispatcher,
@@ -162,6 +169,7 @@ internal static class SampleCommand
         string kind,
         ContainerApp? app,
         int minReplicas,
+        TimeSpan delayLimit,
         string? originalImage,
         ServiceBusClient client,
         DoneDispatcher dispatcher,
@@ -193,6 +201,16 @@ internal static class SampleCommand
                         ReplicaPollInterval,
                         ZeroWaitLimit,
                         cancellationToken);
+
+                    // Scale-in happens on a KEDA check, so a trigger sent as soon as zero is seen lands at about the
+                    // same point in every polling interval. A random delay of up to one interval spreads the triggers
+                    // across it, as arrivals that don't follow scale-in would be.
+                    if (delayLimit > TimeSpan.Zero)
+                    {
+                        var delay = delayLimit * Random.Shared.NextDouble();
+                        Console.WriteLine($"{variant}: waiting a random {delay.TotalSeconds:F1} s before the trigger.");
+                        await Task.Delay(delay, cancellationToken);
+                    }
                 }
                 else if (app is not null && await app.GetReplicaCountAsync(cancellationToken) == 0)
                 {
@@ -497,6 +515,7 @@ internal static class SampleCommand
             arguments.Variants,
             arguments.Samples,
             arguments.ForcedPullTag,
+            arguments.RandomDelay,
             arguments.SampleTimeout.TotalSeconds,
             ReplicaPollInterval.TotalSeconds,
             arguments.Local ? null : arguments.ResourceGroup,
@@ -506,6 +525,9 @@ internal static class SampleCommand
             azVersion,
             snapshots);
     }
+
+    private static TimeSpan PollingInterval(AppSnapshot snapshot) =>
+        TimeSpan.FromSeconds(snapshot.ScaleValue("pollingInterval") ?? DefaultPollingSeconds);
 
     // Printed at the start of a run, to check against the config the apps were meant to be deployed with.
     private static string DescribeScale(AppSnapshot snapshot)
@@ -577,7 +599,10 @@ internal static class SampleCommand
                   + "until the platform has started one:"
                 : $"Before each sample, every {ReplicaPollInterval.TotalSeconds:F0} s until it shows no replicas "
                   + $"(for up to {ZeroWaitLimit.TotalMinutes:F0} minutes). A run refuses an app with min replicas "
-                  + "above 0, which never scales to zero:");
+                  + "above 0, which never scales to zero"
+                  + (arguments.RandomDelay
+                      ? ". Then it waits a random time up to the app's polling interval before sending the trigger:"
+                      : ":"));
         foreach (var variant in arguments.Variants)
         {
             PrintCommand(AzCommands.ReplicaList(arguments.AppName(variant), arguments.ResourceGroup));

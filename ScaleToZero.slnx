@@ -63,6 +63,41 @@
         <File Path="results/identity-cold/summary.json" />
         <File Path="results/identity-cold/summary.md" />
     </Folder>
+    <Folder Name="/results/levers-cooldown-60/">
+        <File Path="results/levers-cooldown-60/config.json" />
+        <File Path="results/levers-cooldown-60/samples.csv" />
+        <File Path="results/levers-cooldown-60/summary.json" />
+        <File Path="results/levers-cooldown-60/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-min-1/">
+        <File Path="results/levers-min-1/config.json" />
+        <File Path="results/levers-min-1/metrics.json" />
+        <File Path="results/levers-min-1/samples.csv" />
+    </Folder>
+    <Folder Name="/results/levers-polling-10/">
+        <File Path="results/levers-polling-10/config.json" />
+        <File Path="results/levers-polling-10/samples.csv" />
+        <File Path="results/levers-polling-10/summary.json" />
+        <File Path="results/levers-polling-10/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-polling-30-random/">
+        <File Path="results/levers-polling-30-random/config.json" />
+        <File Path="results/levers-polling-30-random/samples.csv" />
+        <File Path="results/levers-polling-30-random/summary.json" />
+        <File Path="results/levers-polling-30-random/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-polling-30/">
+        <File Path="results/levers-polling-30/config.json" />
+        <File Path="results/levers-polling-30/samples.csv" />
+        <File Path="results/levers-polling-30/summary.json" />
+        <File Path="results/levers-polling-30/summary.md" />
+    </Folder>
+    <Folder Name="/results/levers-polling-5/">
+        <File Path="results/levers-polling-5/config.json" />
+        <File Path="results/levers-polling-5/samples.csv" />
+        <File Path="results/levers-polling-5/summary.json" />
+        <File Path="results/levers-polling-5/summary.md" />
+    </Folder>
     <Folder Name="/scripts/">
         <Project Path="scripts/InfraRunner/InfraRunner.csproj" />
         <Project Path="scripts/Runner/Runner.csproj" />

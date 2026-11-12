@@ -1,0 +1,95 @@
+{
+  "run": "levers-polling-5",
+  "started": "2026-11-11T18:31:00.1104131+00:00",
+  "mode": "azure",
+  "kind": "cold",
+  "variants": [
+    "jit"
+  ],
+  "samples": 30,
+  "forcedPullTag": null,
+  "randomDelay": false,
+  "sampleTimeoutSeconds": 600,
+  "replicaPollSeconds": 10,
+  "resourceGroup": "rg-stz-uksouth",
+  "runnerSdkVersion": "7.21.0\u002B4e4c19469fe598b9f28a73d065514106985e7560",
+  "runnerRuntime": ".NET 10.0.14",
+  "runnerOs": "Microsoft Windows 10.0.19045",
+  "azVersion": {
+    "azure-cli": "2.91.0",
+    "azure-cli-core": "2.91.0",
+    "azure-cli-telemetry": "1.1.0",
+    "extensions": {
+      "log-analytics": "1.0.0b3"
+    }
+  },
+  "apps": [
+    {
+      "variant": "jit",
+      "name": "ca-stz-jit",
+      "scaleConfig": "jit-polling-5",
+      "latestRevisionName": "ca-stz-jit--0000037",
+      "template": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "SERVICEBUS_CONNECTION_STRING",
+                "secretRef": "servicebus-connection"
+              },
+              {
+                "name": "WORKER_VARIANT",
+                "value": "jit"
+              },
+              {
+                "name": "WORKER_QUEUE",
+                "value": "jit"
+              },
+              {
+                "name": "WORKER_DONE_QUEUE",
+                "value": "done"
+              }
+            ],
+            "image": "redacted.azurecr.io/scale-to-zero-worker:jit-v1",
+            "name": "worker",
+            "resources": {
+              "cpu": 0.25,
+              "ephemeralStorage": "1Gi",
+              "memory": "0.5Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": "",
+        "scale": {
+          "cooldownPeriod": 300,
+          "maxReplicas": 1,
+          "minReplicas": 0,
+          "pollingInterval": 5,
+          "rules": [
+            {
+              "custom": {
+                "auth": [
+                  {
+                    "secretRef": "scaler-connection",
+                    "triggerParameter": "connection"
+                  }
+                ],
+                "metadata": {
+                  "messageCount": "1",
+                  "namespace": "redacted",
+                  "queueName": "jit"
+                },
+                "type": "azure-servicebus"
+              },
+              "name": "servicebus-queue"
+            }
+          ]
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      }
+    }
+  ]
+}
