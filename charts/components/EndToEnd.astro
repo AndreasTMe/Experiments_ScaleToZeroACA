@@ -1,0 +1,129 @@
+---
+// Chart 2: every cold sample's time from trigger enqueued to done enqueued, one row of dots per variant.
+import data from "./data/end-to-end.json";
+
+const width = 720;
+const labelWidth = 150;
+const valueWidth = 96;
+const rowHeight = 44;
+const rowGap = 10;
+const axisHeight = 34;
+const plotWidth = width - labelWidth - valueWidth;
+const tickStep = 10000;
+
+const max = Math.ceil(Math.max(...data.variants.flatMap((variant) => variant.samplesMs)) / tickStep) * tickStep;
+const x = (ms: number) => labelWidth + (ms / max) * plotWidth;
+const ticks = Array.from({ length: max / tickStep + 1 }, (_, index) => index * tickStep);
+const height = data.variants.length * (rowHeight + rowGap) - rowGap + axisHeight;
+const rowY = (index: number) => index * (rowHeight + rowGap);
+
+// Spreads the dots up and down a fixed amount by sample order, so overlapping samples stay visible and the
+// chart comes out the same each time.
+const jitter = (index: number) => (((index * 7) % 11) / 10 - 0.5) * (rowHeight - 14);
+
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
+const summary = `Strip chart of end-to-end time per cold sample. ${data.variants
+    .map(
+        (variant) =>
+            `${variant.label}: median ${seconds(variant.medianMs)}, p90 ${seconds(variant.p90Ms)}, ` +
+            `from ${seconds(Math.min(...variant.samplesMs))} to ${seconds(Math.max(...variant.samplesMs))}`,
+    )
+    .join(". ")}.`;
+---
+
+<figure class="chart">
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={summary}>
+        {
+            ticks.map((tick) => (
+                <g>
+                    <line class="grid" x1={x(tick)} x2={x(tick)} y1="0" y2={height - axisHeight + 4} />
+                    <text class="tick" x={x(tick)} y={height - 8} text-anchor="middle">
+                        {tick / 1000}
+                    </text>
+                </g>
+            ))
+        }
+        {
+            data.variants.map((variant, index) => {
+                const centre = rowY(index) + rowHeight / 2;
+                return (
+                    <g>
+                        <text class="label" x="0" y={centre} dominant-baseline="middle">
+                            {variant.label}
+                        </text>
+                        {variant.samplesMs.map((ms, sample) => (
+                            <circle class="dot" cx={x(ms)} cy={centre + jitter(sample)} r="4">
+                                <title>{`${variant.label}, sample ${sample + 1}: ${seconds(ms)}`}</title>
+                            </circle>
+                        ))}
+                        <line
+                            class="median"
+                            x1={x(variant.medianMs)}
+                            x2={x(variant.medianMs)}
+                            y1={rowY(index)}
+                            y2={rowY(index) + rowHeight}
+                        >
+                            <title>{`${variant.label}, median: ${seconds(variant.medianMs)}`}</title>
+                        </line>
+                        <text class="value" x={width - valueWidth + 12} y={centre} dominant-baseline="middle">
+                            {seconds(variant.medianMs)}
+                        </text>
+                    </g>
+                );
+            })
+        }
+    </svg>
+    <figcaption>
+        Seconds from trigger enqueued to done enqueued for each cold sample, 30 per variant, on the default scale
+        settings. The line and the figure on the right are the median. Each trigger was sent as soon as the app was seen
+        at zero.
+    </figcaption>
+</figure>
+
+<style>
+    .chart {
+        margin: 2em 0;
+    }
+    svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+    .grid {
+        stroke: var(--line);
+    }
+    .dot {
+        fill: var(--fg);
+        fill-opacity: 0.45;
+    }
+    .median {
+        stroke: var(--accent);
+        stroke-width: 3;
+    }
+    .tick,
+    .label,
+    .value {
+        font-family: var(--font-display);
+        font-size: 15px;
+    }
+    .tick,
+    .label {
+        fill: var(--muted);
+    }
+    .value {
+        fill: var(--accent);
+    }
+    /* The SVG scales down on a phone, so its text starts larger there. */
+    @media (max-width: 520px) {
+        .tick,
+        .label,
+        .value {
+            font-size: 22px;
+        }
+    }
+    figcaption {
+        margin-top: 0.5em;
+        color: var(--muted);
+        font-size: 0.875rem;
+    }
+</style>

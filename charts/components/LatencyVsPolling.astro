@@ -1,0 +1,195 @@
+---
+// Chart 3: jit's median end-to-end time and polling phase against the KEDA polling interval.
+import data from "./data/latency-vs-polling.json";
+
+const width = 720;
+const height = 380;
+const margin = { top: 16, right: 190, bottom: 72, left: 52 };
+const plotWidth = width - margin.left - margin.right;
+const plotHeight = height - margin.top - margin.bottom;
+const tickStep = 10000;
+
+const points = data.afterScaleIn;
+const random = data.randomArrival;
+const maxInterval = Math.max(...points.map((point) => point.pollingIntervalSeconds));
+const maxValue = Math.ceil(Math.max(...points.map((point) => point.endToEndMedianMs)) / tickStep) * tickStep;
+const ticks = Array.from({ length: maxValue / tickStep + 1 }, (_, index) => index * tickStep);
+
+const x = (interval: number) => margin.left + (interval / maxInterval) * plotWidth;
+const y = (ms: number) => margin.top + plotHeight - (ms / maxValue) * plotHeight;
+
+const series = [
+    { key: "endToEndMedianMs", name: "End to end", className: "end-to-end" },
+    { key: "pollingMedianMs", name: "KEDA polling", className: "polling" },
+] as const;
+
+const linePath = (key: (typeof series)[number]["key"]) =>
+    points.map((point, index) => `${index === 0 ? "M" : "L"}${x(point.pollingIntervalSeconds)} ${y(point[key])}`).join(" ");
+
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
+const summary = `Line chart of jit's median end-to-end time and polling phase by polling interval, trigger sent as soon as zero replicas is seen: ${points
+    .map(
+        (point) =>
+            `${point.pollingIntervalSeconds} s polling, end to end ${seconds(point.endToEndMedianMs)}, polling ${seconds(point.pollingMedianMs)}`,
+    )
+    .join("; ")}. With the trigger sent at a random time at 30 s polling: end to end ${seconds(random.endToEndMedianMs)}, polling ${seconds(random.pollingMedianMs)}.`;
+---
+
+<figure class="chart">
+    <ul class="legend">
+        <li><span class="key solid"></span>Sent as soon as zero is seen</li>
+        <li><span class="key hollow"></span>Sent at a random time</li>
+    </ul>
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={summary}>
+        {
+            ticks.map((value) => (
+                <g>
+                    <line class="grid" x1={margin.left} x2={margin.left + plotWidth} y1={y(value)} y2={y(value)} />
+                    <text class="tick" x={margin.left - 12} y={y(value)} text-anchor="end" dominant-baseline="middle">
+                        {value / 1000}
+                    </text>
+                </g>
+            ))
+        }
+        {
+            points.map((point) => (
+                <text class="tick" x={x(point.pollingIntervalSeconds)} y={margin.top + plotHeight + 32} text-anchor="middle">
+                    {point.pollingIntervalSeconds}
+                </text>
+            ))
+        }
+        <text class="axis-title" x={margin.left + plotWidth / 2} y={height - 8} text-anchor="middle">
+            Polling interval (s)
+        </text>
+        {series.map(({ key, className }) => <path class={`line ${className}`} d={linePath(key)} />)}
+        {
+            series.map(({ key, name, className }) =>
+                points.map((point) => (
+                    <circle class={`marker ${className}`} cx={x(point.pollingIntervalSeconds)} cy={y(point[key])} r="5">
+                        <title>{`${name}, ${point.pollingIntervalSeconds} s polling: ${seconds(point[key])}`}</title>
+                    </circle>
+                )),
+            )
+        }
+        {
+            series.map(({ key, name, className }) => (
+                <circle class={`marker hollow ${className}`} cx={x(random.pollingIntervalSeconds)} cy={y(random[key])} r="5">
+                    <title>{`${name}, ${random.pollingIntervalSeconds} s polling, sent at a random time: ${seconds(random[key])}`}</title>
+                </circle>
+            ))
+        }
+        {
+            series.map(({ key, name }) => (
+                <text class="label" x={x(maxInterval) + 14} y={y(points[points.length - 1][key])} dominant-baseline="middle">
+                    {`${name} ${seconds(points[points.length - 1][key])}`}
+                </text>
+            ))
+        }
+        {
+            series.map(({ key }) => (
+                <text class="label random" x={x(maxInterval) + 14} y={y(random[key])} dominant-baseline="middle">
+                    {`random ${seconds(random[key])}`}
+                </text>
+            ))
+        }
+    </svg>
+    <figcaption>
+        Median seconds for jit by KEDA polling interval, 30 cold samples per point, cooldown 300 s. Sent as soon as zero
+        is seen, a trigger lands just after a KEDA check and waits most of an interval; at 30 s the hollow points send it
+        a random time up to one interval later instead, as real traffic would arrive.
+    </figcaption>
+</figure>
+
+<style>
+    .chart {
+        margin: 2em 0;
+    }
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25em 1.25em;
+        margin: 0 0 1em;
+        padding: 0;
+        list-style: none;
+        font-size: 0.875rem;
+    }
+    .legend li {
+        display: flex;
+        align-items: center;
+        gap: 0.4em;
+    }
+    .key {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2px solid var(--fg);
+    }
+    .key.solid {
+        background: var(--fg);
+    }
+    svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+    .grid {
+        stroke: var(--line);
+    }
+    .tick,
+    .axis-title {
+        fill: var(--muted);
+        font-family: var(--font-display);
+        font-size: 15px;
+    }
+    .label {
+        fill: var(--fg);
+        font-family: var(--font-display);
+        font-size: 15px;
+    }
+    .label.random {
+        fill: var(--muted);
+    }
+    .line {
+        fill: none;
+        stroke-width: 2;
+    }
+    .line.end-to-end {
+        stroke: var(--fg);
+    }
+    .line.polling {
+        stroke: var(--accent);
+    }
+    .marker {
+        stroke-width: 2;
+    }
+    .marker.end-to-end {
+        fill: var(--fg);
+        stroke: var(--bg);
+    }
+    .marker.polling {
+        fill: var(--accent);
+        stroke: var(--bg);
+    }
+    .marker.hollow {
+        fill: var(--bg);
+    }
+    .marker.hollow.end-to-end {
+        stroke: var(--fg);
+    }
+    .marker.hollow.polling {
+        stroke: var(--accent);
+    }
+    /* The SVG scales down on a phone, so its text starts larger there. */
+    @media (max-width: 520px) {
+        .tick,
+        .axis-title,
+        .label {
+            font-size: 22px;
+        }
+    }
+    figcaption {
+        margin-top: 0.5em;
+        color: var(--muted);
+        font-size: 0.875rem;
+    }
+</style>

@@ -1,0 +1,54 @@
+{
+    "variant" : "jit",
+    "wakeUpsPerMonth" : 1000,
+    "hoursPerMonth" : 730,
+    "scaleToZero" : [
+        {
+            "key" : "cooldown60",
+            "label" : "Cooldown 60 s",
+            "run" : "levers-cooldown-60",
+            "arrival" : "afterScaleIn",
+            "medianMs" : 47946,
+            "replicaSecondsPerWakeUp" : 93.3,
+            "costPerWakeUp" : 0.00098,
+            "monthlyCost" : 0.98
+        },
+        {
+            "key" : "defaults",
+            "label" : "Defaults",
+            "run" : "levers-polling-30-random",
+            "arrival" : "random",
+            "medianMs" : 32747,
+            "replicaSecondsPerWakeUp" : 336.7,
+            "costPerWakeUp" : 0.003536,
+            "monthlyCost" : 3.54
+        },
+        {
+            "key" : "polling10",
+            "label" : "Polling 10 s",
+            "run" : "levers-polling-10",
+            "arrival" : "afterScaleIn",
+            "medianMs" : 27971,
+            "replicaSecondsPerWakeUp" : 357.5,
+            "costPerWakeUp" : 0.003754,
+            "monthlyCost" : 3.75
+        },
+        {
+            "key" : "polling5",
+            "label" : "Polling 5 s",
+            "run" : "levers-polling-5",
+            "arrival" : "afterScaleIn",
+            "medianMs" : 23017,
+            "replicaSecondsPerWakeUp" : 357.9,
+            "costPerWakeUp" : 0.003758,
+            "monthlyCost" : 3.76
+        }
+    ],
+    "alwaysOn" : {
+        "label" : "Always on",
+        "run" : "levers-min-1",
+        "medianMs" : 10,
+        "monthlyCostIdle" : 7.88,
+        "monthlyCostActive" : 27.59
+    }
+}

@@ -1,6 +1,23 @@
 <Solution>
+    <Folder Name="/charts/">
+        <File Path="charts/export-data.mjs" />
+    </Folder>
+    <Folder Name="/charts/components/" />
+    <Folder Name="/charts/components/components/">
+        <File Path="charts/components/EndToEnd.astro" />
+        <File Path="charts/components/LatencyVsCost.astro" />
+        <File Path="charts/components/LatencyVsPolling.astro" />
+        <File Path="charts/components/PhaseBreakdown.astro" />
+    </Folder>
+    <Folder Name="/charts/components/components/data/">
+        <File Path="charts/components/data/end-to-end.json" />
+        <File Path="charts/components/data/latency-vs-cost.json" />
+        <File Path="charts/components/data/latency-vs-polling.json" />
+        <File Path="charts/components/data/phase-breakdown.json" />
+    </Folder>
     <Folder Name="/docs/">
         <File Path="docs/aot.md" />
+        <File Path="docs/charts.md" />
         <File Path="docs/costs.md" />
         <File Path="docs/defaults.md" />
         <File Path="docs/images.md" />
